@@ -38,6 +38,7 @@ const Shop = () => {
 
   const products = productsData.length > 0 ? productsData.map(p => ({
     id: p.id,
+    seller_id: p.seller_id,
     title: p.title,
     brand: p.brand,
     price: p.price,
@@ -46,6 +47,7 @@ const Shop = () => {
     image: p.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800',
     badges: p.badges || [],
     inStock: p.in_stock,
+    description: p.description,
   })) : [
     {
       title: "Professional Dive Computer",

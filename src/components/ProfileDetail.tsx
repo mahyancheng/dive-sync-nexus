@@ -55,9 +55,21 @@ const handleMessage = async () => {
     return;
   }
 
-  // Use RPC to create or get a DM while bypassing RLS safely
-  await supabase.rpc('create_or_get_direct_conversation', { target_user_id: otherId });
-  navigate('/messages');
+  try {
+    // Use RPC to create or get a DM conversation
+    const { data: conversationId, error } = await supabase.rpc('create_or_get_direct_conversation', { 
+      target_user_id: otherId 
+    });
+    
+    if (error) throw error;
+    
+    // Navigate to messages with the conversation ID
+    navigate('/messages', { state: { conversationId } });
+    handleClose();
+  } catch (error) {
+    console.error('Error creating conversation:', error);
+    navigate('/messages');
+  }
 };
 
 if (!open) return null;

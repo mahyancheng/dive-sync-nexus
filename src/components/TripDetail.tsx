@@ -5,8 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Portal from "@/components/Portal";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Trip {
+  id?: string;
+  dive_center_id?: string;
   title: string;
   centre: string;
   location: string;
@@ -28,12 +32,39 @@ interface TripDetailProps {
 const TripDetail = ({ trip, onClose }: TripDetailProps) => {
   const [liked, setLiked] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const navigate = useNavigate();
 
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
       onClose();
     }, 300);
+  };
+
+  const handleContact = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      navigate('/auth');
+      return;
+    }
+
+    if (!trip.dive_center_id) {
+      navigate('/messages');
+      return;
+    }
+
+    try {
+      const { data: conversationId, error } = await supabase.rpc('create_or_get_direct_conversation', { 
+        target_user_id: trip.dive_center_id 
+      });
+      
+      if (error) throw error;
+      navigate('/messages', { state: { conversationId } });
+      handleClose();
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      navigate('/messages');
+    }
   };
 
   return (
@@ -162,7 +193,7 @@ const TripDetail = ({ trip, onClose }: TripDetailProps) => {
                 Book Now
               </Button>
             </div>
-            <Button size="lg" variant="outline" className="w-full">
+            <Button size="lg" variant="outline" className="w-full" onClick={handleContact}>
               Contact Centre
             </Button>
           </CardFooter>

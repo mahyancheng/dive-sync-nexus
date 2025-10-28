@@ -22,7 +22,7 @@ const Explore = () => {
   const fetchExperiences = async () => {
     const { data, error } = await supabase
       .from('experiences')
-      .select('*, dive_centers(name, avatar_url)')
+      .select('*, dive_centers(name, avatar_url, owner_id)')
       .order('created_at', { ascending: false });
     
     if (!error && data) {
@@ -32,6 +32,7 @@ const Explore = () => {
 
   const listings = experiences.length > 0 ? experiences.map(exp => ({
     id: exp.id,
+    dive_center_id: (exp.dive_centers as any)?.owner_id,
     title: exp.title,
     centre: (exp.dive_centers as any)?.name || 'Dive Center',
     location: exp.location,

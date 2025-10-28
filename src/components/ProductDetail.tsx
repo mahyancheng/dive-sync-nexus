@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { X, Heart, ShoppingCart, Star, TrendingUp, Share2, Minus, Plus } from "lucide-react";
+import { X, Heart, ShoppingCart, Star, TrendingUp, Share2, Minus, Plus, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Portal from "@/components/Portal";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Product {
+  id?: string;
+  seller_id?: string;
   title: string;
   brand: string;
   price: number;
@@ -28,12 +32,39 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
   const [liked, setLiked] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [isClosing, setIsClosing] = useState(false);
+  const navigate = useNavigate();
 
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
       onClose();
     }, 300);
+  };
+
+  const handleContactSeller = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      navigate('/auth');
+      return;
+    }
+
+    if (!product.seller_id) {
+      navigate('/messages');
+      return;
+    }
+
+    try {
+      const { data: conversationId, error } = await supabase.rpc('create_or_get_direct_conversation', { 
+        target_user_id: product.seller_id 
+      });
+      
+      if (error) throw error;
+      navigate('/messages', { state: { conversationId } });
+      handleClose();
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      navigate('/messages');
+    }
   };
 
   return (
@@ -179,9 +210,14 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
                 Add to Cart
               </Button>
             </div>
-            <Button size="lg" variant="outline" className="w-full">
-              Buy Now
-            </Button>
+            <div className="flex gap-2 w-full">
+              <Button size="lg" variant="outline" className="flex-1">
+                Buy Now
+              </Button>
+              <Button size="lg" variant="outline" onClick={handleContactSeller}>
+                <MessageCircle className="w-4 h-4" />
+              </Button>
+            </div>
           </CardFooter>
         </Card>
       </div>

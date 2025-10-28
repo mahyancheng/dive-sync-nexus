@@ -24,35 +24,72 @@ const BuddyFinder = () => {
   }, []);
 
   const fetchUsers = async () => {
-    const { data } = await supabase
+    const { data: session } = await supabase.auth.getSession();
+    const currentUserId = session?.session?.user.id;
+
+    // Fetch regular users (exclude current user)
+    const { data: profilesData } = await supabase
       .from('profiles')
       .select('*')
-      .limit(20);
-    if (data) setUsers(data);
+      .neq('id', currentUserId || '')
+      .limit(15);
+
+    // Fetch dive centers
+    const { data: centersData } = await supabase
+      .from('dive_centers')
+      .select('*')
+      .limit(10);
+
+    const usersList = [];
+
+    if (profilesData) {
+      usersList.push(...profilesData.map(profile => ({
+        id: profile.id,
+        name: profile.full_name || profile.username,
+        avatar: profile.avatar_url || '',
+        role: profile.bio || 'Diver',
+        location: profile.location || 'Unknown',
+        bio: profile.bio,
+        totalDives: profile.total_dives || 0,
+        certifications: profile.certifications || [],
+        joinedDate: profile.joined_date ? new Date(profile.joined_date).toLocaleDateString() : 'Unknown',
+        availability: 'Available',
+        preferredSites: [],
+        posts: [],
+      })));
+    }
+
+    if (centersData) {
+      usersList.push(...centersData.map(center => ({
+        id: center.owner_id,
+        name: center.name,
+        avatar: center.avatar_url || '',
+        role: 'Dive Center',
+        location: center.location || 'Unknown',
+        bio: center.description,
+        totalDives: 0,
+        certifications: [],
+        joinedDate: center.created_at ? new Date(center.created_at).toLocaleDateString() : 'Unknown',
+        availability: 'Open',
+        preferredSites: [],
+        posts: [],
+      })));
+    }
+
+    if (usersList.length > 0) {
+      setUsers(usersList);
+    }
   };
 
   const fetchExperiences = async () => {
     const { data } = await supabase
       .from('experiences')
-      .select('*, dive_centers(name)')
+      .select('*, dive_centers(name, owner_id)')
       .limit(20);
     if (data) setExperiences(data);
   };
 
-  const diveBuddies = users.length > 0 ? users.map(u => ({
-    id: u.id,
-    name: u.full_name || u.username,
-    avatar: u.avatar_url,
-    role: u.bio || 'Diver',
-    location: u.location || 'Unknown',
-    bio: u.bio,
-    totalDives: u.total_dives || 0,
-    certifications: u.certifications || [],
-    joinedDate: new Date(u.joined_date).toLocaleDateString(),
-    availability: 'Available',
-    preferredSites: [],
-    posts: [],
-  })) : [
+  const diveBuddies = users.length > 0 ? users : [
     {
       name: "Sarah Ocean",
       avatar: "",
@@ -105,17 +142,23 @@ const BuddyFinder = () => {
 
   const upcomingTrips = experiences.length > 0 ? experiences.map(exp => ({
     id: exp.id,
+    dive_center_id: (exp.dive_centers as any)?.owner_id,
     title: exp.title,
+    centre: (exp.dive_centers as any)?.name || 'Dive Center',
     location: exp.location,
     price: exp.price,
     rating: exp.rating || 0,
+    reviews: exp.reviews_count || 0,
     image: exp.image_url || 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800',
+    nextDate: exp.next_date ? new Date(exp.next_date).toLocaleDateString() : 'TBD',
     date: exp.next_date ? new Date(exp.next_date).toLocaleDateString() : 'TBD',
     duration: exp.duration,
+    seatsLeft: exp.spots_left,
     spotsLeft: exp.spots_left,
     totalSpots: exp.total_spots,
     operator: (exp.dive_centers as any)?.name || 'Dive Center',
     difficulty: exp.difficulty,
+    badges: exp.badges || [],
     includes: exp.includes || [],
     description: exp.description,
   })) : [

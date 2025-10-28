@@ -16,7 +16,7 @@ const Feed = () => {
       .from('posts')
       .select(`
         *,
-        profiles!inner(username, full_name, avatar_url, bio),
+        profiles!inner(id, username, full_name, avatar_url, bio),
         dive_logs(
           *,
           dive_buddies(buddy_name, buddy_avatar)
@@ -28,6 +28,7 @@ const Feed = () => {
     if (!error && data) {
       const formattedPosts = data.map((post: any) => ({
         author: {
+          id: post.profiles?.id,
           name: post.profiles?.full_name || post.profiles?.username || 'Unknown',
           avatar: post.profiles?.avatar_url || '',
           role: post.profiles?.bio || 'Diver'

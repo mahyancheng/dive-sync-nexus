@@ -43,7 +43,10 @@ const Profile = () => {
 
     const { data, error } = await supabase
       .from('posts')
-      .select('*')
+      .select(`
+        *,
+        dive_logs(*)
+      `)
       .eq('author_id', session.session.user.id)
       .order('created_at', { ascending: false });
 
@@ -132,8 +135,9 @@ const Profile = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="posts" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="posts">Posts</TabsTrigger>
+            <TabsTrigger value="divelogs">Dive Logs</TabsTrigger>
             <TabsTrigger value="saved">Saved</TabsTrigger>
           </TabsList>
 
@@ -156,6 +160,28 @@ const Profile = () => {
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 No posts yet
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="divelogs" className="mt-4">
+            {posts.filter(p => p.dive_logs && p.dive_logs.length > 0).length > 0 ? (
+              <div className="space-y-3">
+                {posts.filter(p => p.dive_logs && p.dive_logs.length > 0).map((post) => (
+                  post.dive_logs?.map((log: any) => (
+                    <Card key={log.id} className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold">{log.site}</h4>
+                        <Badge variant="secondary">{log.max_depth}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{log.notes || 'No notes'}</p>
+                    </Card>
+                  ))
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                No dive logs yet
               </div>
             )}
           </TabsContent>
