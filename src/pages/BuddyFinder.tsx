@@ -208,51 +208,66 @@ const BuddyFinder = () => {
 
           {/* Upcoming Trips Tab */}
           <TabsContent value="trips" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {upcomingTrips.map((trip, index) => (
                 <Card 
                   key={index} 
-                  className="overflow-hidden border-accent/20 hover:shadow-ocean transition-all cursor-pointer"
+                  className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group"
                   onClick={() => setSelectedTrip(trip)}
                 >
-                  <div className="relative h-48">
-                    <img src={trip.image} alt={trip.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-3 right-3">
-                      <Badge className="bg-accent text-accent-foreground">
+                  {/* Image */}
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <img
+                      src={trip.image}
+                      alt={trip.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                    {/* Badges */}
+                    <div className="absolute top-2 left-2">
+                      <Badge className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0 bg-coral text-white">
+                        {trip.spotsLeft} spots
+                      </Badge>
+                    </div>
+                    {/* Rating */}
+                    <div className="absolute top-2 right-2">
+                      <Badge className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
                         ⭐ {trip.rating}
                       </Badge>
                     </div>
-                    <div className="absolute top-3 left-3">
-                      <Badge className="bg-coral text-white">
-                        {trip.spotsLeft} spots left
-                      </Badge>
+                    {/* Price */}
+                    <div className="absolute bottom-2 right-2">
+                      <div className="glass-effect backdrop-blur-sm px-2 py-1 rounded-lg">
+                        <span className="text-sm font-bold text-accent">${trip.price}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-5">
-                    <h3 className="font-bold text-lg mb-2">{trip.title}</h3>
-                    
-                    <div className="space-y-2 mb-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        <span>{trip.location}</span>
+                  {/* Content */}
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-1 line-clamp-2">{trip.title}</h3>
+                    <p className="text-xs text-muted-foreground mb-2 truncate">{trip.operator}</p>
+
+                    <div className="space-y-1.5 mb-3">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <MapPin className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground truncate">{trip.location}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        <span>{trip.date}</span>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Calendar className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground truncate">{trip.date}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span>{trip.duration}</span>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">{trip.duration}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                          {trip.difficulty}
+                        </Badge>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-2xl font-bold text-accent">${trip.price}</div>
-                      <Badge variant="secondary">{trip.difficulty}</Badge>
-                    </div>
-
-                    <Button variant="coral" className="w-full">
+                    <Button size="sm" className="w-full h-7 text-xs" variant="coral">
                       Join Trip
                     </Button>
                   </div>
