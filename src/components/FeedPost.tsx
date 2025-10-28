@@ -46,6 +46,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
   const [showDiveDetail, setShowDiveDetail] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [isDiveLogExpanded, setIsDiveLogExpanded] = useState(true);
 
   const profileData = {
     name: author.name,
@@ -117,40 +118,61 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
                 </div>
               )}
 
-              {/* Current Dive Log - Clickable */}
-              <button
-                onClick={() => setShowDiveDetail(true)}
-                className="glass-effect rounded-xl p-3 border border-accent/20 shadow-glow text-left w-full glass-hover"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="w-3.5 h-3.5 text-accent" />
-                  <h4 className="font-semibold text-foreground text-sm">{diveLogs[currentLogIndex].site}</h4>
-                  {diveLogs.length > 1 && (
-                    <Badge variant="secondary" className="ml-auto text-xs">
-                      {currentLogIndex + 1}/{diveLogs.length}
-                    </Badge>
-                  )}
-                </div>
+              {/* Current Dive Log - Collapsible */}
+              <div className="glass-effect rounded-xl border border-accent/20 shadow-glow overflow-hidden transition-all">
+                {/* Header - Always Visible */}
+                <button
+                  onClick={() => setIsDiveLogExpanded(!isDiveLogExpanded)}
+                  className="w-full p-3 text-left glass-hover flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <MapPin className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                    <h4 className="font-semibold text-foreground text-sm">{diveLogs[currentLogIndex].site}</h4>
+                    {diveLogs.length > 1 && (
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {currentLogIndex + 1}/{diveLogs.length}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className={`ml-2 transition-transform ${isDiveLogExpanded ? 'rotate-180' : ''}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
                 
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="flex items-center gap-1">
-                    <Gauge className="w-3 h-3 text-coral" />
-                    <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].maxDepth}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-accent" />
-                    <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].duration}</span>
-                  </div>
-                  {diveLogs[currentLogIndex].buddies && (
-                    <div className="flex items-center gap-1">
-                      <Users className="w-3 h-3 text-primary" />
-                      <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].buddies.length}</span>
+                {/* Expandable Content */}
+                {isDiveLogExpanded && (
+                  <div className="px-3 pb-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Gauge className="w-3 h-3 text-coral" />
+                        <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].maxDepth}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-accent" />
+                        <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].duration}</span>
+                      </div>
+                      {diveLogs[currentLogIndex].buddies && (
+                        <div className="flex items-center gap-1">
+                          <Users className="w-3 h-3 text-primary" />
+                          <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].buddies.length}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <p className="text-xs text-accent">Tap for details →</p>
-              </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDiveDetail(true);
+                      }}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      Tap for full details →
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
