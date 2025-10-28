@@ -185,14 +185,14 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
       </div>
 
       {/* Right Side Actions */}
-      <div className="absolute right-4 bottom-32 flex flex-col gap-6">
+      <div className="absolute right-3 bottom-32 flex flex-col gap-4">
         <button 
           onClick={() => setLiked(!liked)}
-          className="flex flex-col items-center gap-1"
+          className="flex flex-col items-center gap-0.5"
         >
-          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
             <Heart 
-              className={`w-6 h-6 ${liked ? 'fill-coral text-coral' : 'text-white'}`}
+              className={`w-5 h-5 ${liked ? 'fill-coral text-coral' : 'text-white'}`}
             />
           </div>
           <span className="text-xs font-semibold text-white drop-shadow-lg">
@@ -200,26 +200,26 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
           </span>
         </button>
 
-        <button className="flex flex-col items-center gap-1">
-          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-            <MessageCircle className="w-6 h-6 text-white" />
+        <button className="flex flex-col items-center gap-0.5">
+          <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <span className="text-xs font-semibold text-white drop-shadow-lg">{comments}</span>
         </button>
 
-        <button className="flex flex-col items-center gap-1">
-          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-            <Share2 className="w-6 h-6 text-white" />
+        <button className="flex flex-col items-center gap-0.5">
+          <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+            <Share2 className="w-5 h-5 text-white" />
           </div>
         </button>
 
         <button 
           onClick={() => setSaved(!saved)}
-          className="flex flex-col items-center gap-1"
+          className="flex flex-col items-center gap-0.5"
         >
-          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
             <Bookmark 
-              className={`w-6 h-6 ${saved ? 'fill-white text-white' : 'text-white'}`}
+              className={`w-5 h-5 ${saved ? 'fill-white text-white' : 'text-white'}`}
             />
           </div>
         </button>

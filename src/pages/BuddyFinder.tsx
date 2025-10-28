@@ -151,55 +151,56 @@ const BuddyFinder = () => {
 
           {/* Dive Buddies Tab */}
           <TabsContent value="buddies" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {diveBuddies.map((buddy, index) => (
                 <Card 
                   key={index} 
-                  className="p-5 border-accent/20 hover:shadow-ocean transition-all cursor-pointer"
+                  className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group"
                   onClick={() => setSelectedProfile(buddy)}
                 >
-                  <div className="flex items-start gap-4 mb-4">
-                    <Avatar className="h-16 w-16">
-                      <AvatarImage src={buddy.avatar} />
-                      <AvatarFallback className="bg-accent text-accent-foreground">
-                        {buddy.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg truncate">{buddy.name}</h3>
-                      <p className="text-sm text-muted-foreground">{buddy.role}</p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <MapPin className="w-3 h-3" />
-                        <span className="truncate">{buddy.location}</span>
+                  {/* Profile Image */}
+                  <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-accent/20 to-primary/20">
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Avatar className="h-24 w-24">
+                        <AvatarImage src={buddy.avatar} />
+                        <AvatarFallback className="bg-accent text-accent-foreground text-2xl">
+                          {buddy.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    {/* Online Status */}
+                    <div className="absolute top-2 right-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                    </div>
+                    {/* Badges */}
+                    <div className="absolute bottom-2 left-2">
+                      <Badge className="glass-effect backdrop-blur-sm text-xs">
+                        {buddy.totalDives} dives
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-0.5 truncate">{buddy.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-2 truncate">{buddy.role}</p>
+
+                    <div className="space-y-1.5 mb-3">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <MapPin className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground truncate">{buddy.location}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Clock className="w-3 h-3 text-coral" />
+                        <span className="text-muted-foreground truncate">{buddy.availability}</span>
                       </div>
                     </div>
+
+                    <Button size="sm" className="w-full h-7 text-xs" variant="accent">
+                      <Users className="w-3 h-3 mr-1" />
+                      Connect
+                    </Button>
                   </div>
-
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{buddy.bio}</p>
-
-                  <div className="flex items-center gap-4 mb-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Anchor className="w-4 h-4 text-accent" />
-                      <span className="font-semibold text-accent">{buddy.totalDives}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4 text-coral" />
-                      <span className="text-xs text-muted-foreground">{buddy.availability}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {buddy.preferredSites.slice(0, 2).map((site, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {site}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  <Button variant="accent" className="w-full">
-                    <Users className="w-4 h-4 mr-2" />
-                    Connect
-                  </Button>
                 </Card>
               ))}
             </div>

@@ -65,13 +65,13 @@ const Explore = () => {
   const divePoints = listings.map(listing => ({
     id: listing.title,
     name: listing.title,
-    coordinates: [
-      listing.location.includes("Australia") ? [145.7781, -16.9186] :
-      listing.location.includes("Thailand") ? [98.3923, 7.8804] :
-      listing.location.includes("Maldives") ? [73.2207, 3.2028] :
-      listing.location.includes("USA") ? [-80.4305, 25.0869] :
+    coordinates: (
+      listing.location.includes("Australia") ? [-16.9186, 145.7781] :
+      listing.location.includes("Thailand") ? [7.8804, 98.3923] :
+      listing.location.includes("Maldives") ? [3.2028, 73.2207] :
+      listing.location.includes("USA") ? [25.0869, -80.4305] :
       [0, 0]
-    ][0] as [number, number],
+    ) as [number, number],
     difficulty: "All levels",
     maxDepth: "30m"
   }));

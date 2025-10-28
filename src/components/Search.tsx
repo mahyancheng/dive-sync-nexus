@@ -315,7 +315,7 @@ const Search = () => {
                       divePoints={posts.map(post => ({
                         id: post.id,
                         name: post.title,
-                        coordinates: [145.7781, -16.9186] as [number, number],
+                        coordinates: [-16.9186, 145.7781] as [number, number],
                         description: post.description
                       }))} 
                       className="h-full w-full" 
