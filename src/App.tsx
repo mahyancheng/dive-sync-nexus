@@ -24,7 +24,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => (
 );
 
 const MainPages = () => (
-  <div className="w-full h-screen overflow-hidden">
+  <div className="w-screen h-screen overflow-hidden fixed inset-0">
     <PageTransition />
     <BottomNav />
   </div>

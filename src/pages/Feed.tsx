@@ -118,7 +118,7 @@ const Feed = () => {
   ];
 
   return (
-    <div className="w-full h-screen overflow-y-scroll snap-y snap-mandatory bg-black relative overflow-x-hidden">
+    <div className="w-screen h-screen overflow-y-auto snap-y snap-mandatory bg-black">
       {/* Top Navigation */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         <NavSwitcher defaultValue="following" />

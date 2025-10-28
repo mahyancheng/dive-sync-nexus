@@ -19,31 +19,34 @@ export const PageTransition = () => {
   }, [location.pathname]);
 
   return (
-    <motion.div
-      className="flex w-full h-full"
-      animate={{
-        x: `${-position * 100}%`,
-      }}
-      transition={{
-        type: "spring",
-        stiffness: 300,
-        damping: 30,
-      }}
-    >
-      {/* Following Page */}
-      <div className="min-w-full h-full flex-shrink-0">
-        <Feed />
-      </div>
-      
-      {/* Explore Page */}
-      <div className="min-w-full h-full flex-shrink-0">
-        <Explore />
-      </div>
-      
-      {/* Shop Page */}
-      <div className="min-w-full h-full flex-shrink-0">
-        <Shop />
-      </div>
-    </motion.div>
+    <div className="w-screen h-screen overflow-hidden">
+      <motion.div
+        className="flex h-full"
+        animate={{
+          x: `${-position * 100}vw`,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 30,
+        }}
+        style={{ width: `${routeOrder.length * 100}vw` }}
+      >
+        {/* Following Page */}
+        <div className="w-screen h-full flex-shrink-0 overflow-y-auto">
+          <Feed />
+        </div>
+        
+        {/* Explore Page */}
+        <div className="w-screen h-full flex-shrink-0 overflow-y-auto">
+          <Explore />
+        </div>
+        
+        {/* Shop Page */}
+        <div className="w-screen h-full flex-shrink-0 overflow-y-auto">
+          <Shop />
+        </div>
+      </motion.div>
+    </div>
   );
 };

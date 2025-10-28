@@ -58,13 +58,13 @@ const Explore = () => {
   ];
 
   return (
-    <div className="w-full h-full min-h-screen bg-background pt-4 pb-20 overflow-x-hidden">
+    <div className="w-screen min-h-screen bg-background pt-4 pb-20">
       {/* Top Navigation */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         <NavSwitcher defaultValue="explore" />
       </div>
       
-      <div className="container mx-auto px-4 max-w-full pt-16">
+      <div className="w-full px-4 pt-16">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Explore Dive Trips</h1>
