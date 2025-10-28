@@ -54,6 +54,7 @@ const TripDetail = ({ trip, onClose }: TripDetailProps) => {
     }
 
     // Defer conversation creation to Messages page (?u=)
+    console.log('[TripDetail] Navigate to /messages?u=', trip.dive_center_id);
     navigate(`/messages?u=${trip.dive_center_id}`, { state: { targetUserId: trip.dive_center_id } });
     handleClose();
   };

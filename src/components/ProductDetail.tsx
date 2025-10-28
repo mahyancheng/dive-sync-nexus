@@ -54,6 +54,7 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
     }
 
     // Defer conversation creation to Messages page (?u=)
+    console.log('[ProductDetail] Navigate to /messages?u=', product.seller_id);
     navigate(`/messages?u=${product.seller_id}`, { state: { targetUserId: product.seller_id } });
     handleClose();
   };

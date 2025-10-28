@@ -56,6 +56,7 @@ const handleMessage = async () => {
   }
 
   // Defer conversation creation to Messages page (?u=)
+  console.log('[ProfileDetail] Navigate to /messages?u=', otherId);
   navigate(`/messages?u=${otherId}`, { state: { targetUserId: otherId } });
   handleClose();
 };

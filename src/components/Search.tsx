@@ -74,6 +74,7 @@ const handleMessageUser = async (userId: string) => {
   }
 
   // Defer conversation creation to Messages page (?u=)
+  console.log('[Search] Navigate to /messages?u=', userId);
   navigate(`/messages?u=${userId}`, { state: { targetUserId: userId } });
 };
 
