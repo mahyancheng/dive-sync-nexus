@@ -10,6 +10,7 @@ import ProductDetail from "@/components/ProductDetail";
 import TripDetail from "@/components/TripDetail";
 import ProfileDetail from "@/components/ProfileDetail";
 import Map from "@/components/Map";
+import PostDetail from "@/components/PostDetail";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
@@ -31,6 +32,7 @@ const Search = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const navigate = useNavigate();
@@ -64,48 +66,16 @@ const Search = () => {
     }
   };
 
-  const handleMessageUser = async (userId: string) => {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session) {
-      navigate('/auth');
-      return;
-    }
+const handleMessageUser = async (userId: string) => {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session) {
+    navigate('/auth');
+    return;
+  }
 
-    // Check if conversation already exists
-    const { data: existingConv } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', session.session.user.id);
-
-    if (existingConv && existingConv.length > 0) {
-      const { data: otherParticipants } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', userId)
-        .in('conversation_id', existingConv.map(c => c.conversation_id));
-
-      if (otherParticipants && otherParticipants.length > 0) {
-        navigate('/messages');
-        return;
-      }
-    }
-
-    // Create new conversation
-    const { data: newConv } = await supabase
-      .from('conversations')
-      .insert({ is_group: false })
-      .select()
-      .single();
-
-    if (newConv) {
-      await supabase.from('conversation_participants').insert([
-        { conversation_id: newConv.id, user_id: session.session.user.id },
-        { conversation_id: newConv.id, user_id: userId }
-      ]);
-      
-      navigate('/messages');
-    }
-  };
+  await supabase.rpc('create_or_get_direct_conversation', { target_user_id: userId });
+  navigate('/messages');
+};
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -232,21 +202,8 @@ const Search = () => {
                           <Card 
                             key={post.id} 
                             className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-                            onClick={() => {
-                              const tripData = {
-                                title: post.title,
-                                centre: post.description,
-                                location: "Location",
-                                price: 150,
-                                rating: 4.8,
-                                reviews: 100,
-                                image: post.image || "",
-                                nextDate: "Coming Soon",
-                                seatsLeft: 5,
-                                badges: ["Popular"],
-                                description: post.title,
-                              };
-                              setSelectedTrip(tripData);
+onClick={() => {
+                              setSelectedPostId(post.id);
                             }}
                           >
                             <CardContent className="p-0">
@@ -283,17 +240,25 @@ const Search = () => {
                             <Card 
                               key={account.id} 
                               className="cursor-pointer hover:shadow-lg transition-shadow"
-                              onClick={() => {
-                                if (user) {
+onClick={async () => {
+                                const { data: userRow } = await supabase
+                                  .from('profiles')
+                                  .select('*')
+                                  .eq('id', account.id)
+                                  .maybeSingle();
+
+                                const u = userRow || users.find(u => u.id === account.id);
+                                if (u) {
                                   setSelectedProfile({
-                                    name: user.full_name || user.username,
-                                    avatar: user.avatar_url,
-                                    role: user.bio || 'Diver',
-                                    location: user.location,
-                                    bio: user.bio,
-                                    totalDives: user.total_dives,
-                                    certifications: user.certifications,
-                                    joinedDate: new Date(user.joined_date).toLocaleDateString(),
+                                    id: u.id,
+                                    name: u.full_name || u.username,
+                                    avatar: u.avatar_url,
+                                    role: u.bio || 'Diver',
+                                    location: u.location,
+                                    bio: u.bio,
+                                    totalDives: u.total_dives,
+                                    certifications: u.certifications,
+                                    joinedDate: u.joined_date ? new Date(u.joined_date).toLocaleDateString() : undefined,
                                   });
                                 }
                               }}
@@ -374,28 +339,35 @@ const Search = () => {
         </div>
       )}
 
-      {/* Modals */}
-      {selectedProduct && (
-        <ProductDetail
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-        />
-      )}
+{/* Modals */}
+{selectedProduct && (
+  <ProductDetail
+    product={selectedProduct}
+    onClose={() => setSelectedProduct(null)}
+  />
+)}
 
-      {selectedTrip && (
-        <TripDetail
-          trip={selectedTrip}
-          onClose={() => setSelectedTrip(null)}
-        />
-      )}
+{selectedTrip && (
+  <TripDetail
+    trip={selectedTrip}
+    onClose={() => setSelectedTrip(null)}
+  />
+)}
 
-      {selectedProfile && (
-        <ProfileDetail
-          open={!!selectedProfile}
-          onOpenChange={(open) => !open && setSelectedProfile(null)}
-          profile={selectedProfile}
-        />
-      )}
+{selectedPostId && (
+  <PostDetail
+    postId={selectedPostId}
+    onClose={() => setSelectedPostId(null)}
+  />
+)}
+
+{selectedProfile && (
+  <ProfileDetail
+    open={!!selectedProfile}
+    onOpenChange={(open) => !open && setSelectedProfile(null)}
+    profile={selectedProfile}
+  />
+)}
     </>
   );
 };

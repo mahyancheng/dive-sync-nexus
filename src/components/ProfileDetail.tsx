@@ -7,11 +7,13 @@ import { Card } from "@/components/ui/card";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Portal from "./Portal";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProfileDetailProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profile: {
+    id?: string;
     name: string;
     avatar?: string;
     role: string;
@@ -40,25 +42,39 @@ const ProfileDetail = ({ open, onOpenChange, profile }: ProfileDetailProps) => {
     }, 300);
   };
 
-  const handleMessage = () => {
+const handleMessage = async () => {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session) {
+    navigate('/auth');
+    return;
+  }
+
+  const otherId = profile.id;
+  if (!otherId) {
     navigate('/messages');
-  };
+    return;
+  }
 
-  if (!open) return null;
+  // Use RPC to create or get a DM while bypassing RLS safely
+  await supabase.rpc('create_or_get_direct_conversation', { target_user_id: otherId });
+  navigate('/messages');
+};
 
-  return (
-    <Portal>
-      <div style={{ position: 'fixed' }} className="inset-0 z-50 flex items-end justify-center">
-        <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={handleClose}
-        />
-        
-        <div 
-          className={`relative w-full max-w-2xl max-h-[85vh] bg-card rounded-t-3xl shadow-2xl overflow-hidden ${
-            isClosing ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
-          }`}
-        >
+if (!open) return null;
+
+return (
+  <Portal>
+    <div style={{ position: 'fixed' }} className="inset-0 z-50 flex items-end justify-center">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+      
+      <div 
+        className={`relative w-full max-w-2xl max-h-[85vh] bg-card rounded-t-3xl shadow-2xl overflow-hidden ${
+          isClosing ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
+        }`}
+      >
           {/* Header with Cover */}
           <div className="relative h-32 bg-gradient-to-br from-accent via-primary to-coral">
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800')] bg-cover bg-center opacity-30" />
