@@ -70,6 +70,16 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   @keyframes wave {
     0%, 100% { transform: translateX(-50%) translateY(0); }
     50% { transform: translateX(-50%) translateY(-10px); }

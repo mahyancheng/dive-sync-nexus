@@ -107,56 +107,56 @@ const Logbook = () => {
         {/* Recent Dives */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Recent Dives</h2>
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
             {recentDives.map((dive, index) => (
               <Card 
                 key={index} 
-                className="p-6 glass-effect bento-card glass-hover cursor-pointer"
+                className="p-4 glass-effect bento-card glass-hover cursor-pointer"
                 onClick={() => {
                   setSelectedDive(dive);
                   setIsDetailOpen(true);
                 }}
               >
-                <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                <div className="flex flex-col gap-3">
                   <div className="flex-1">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="text-xl font-semibold mb-1">{dive.site}</h3>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-semibold mb-1 truncate">{dive.site}</h3>
+                        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            <span>{dive.location}</span>
+                            <MapPin className="w-3 h-3" />
+                            <span className="truncate">{dive.location}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className="w-3 h-3" />
                             <span>{dive.date}</span>
                           </div>
                         </div>
                       </div>
-                      <Badge className="bg-accent/10 text-accent border-accent/20">
+                      <Badge className="bg-accent/10 text-accent border-accent/20 text-xs shrink-0 ml-2">
                         {dive.conditions}
                       </Badge>
                     </div>
 
-                    <div className="flex flex-wrap gap-4 mb-3">
+                    <div className="flex flex-col gap-2 mb-2">
                       <div className="flex items-center gap-2">
-                        <Gauge className="w-4 h-4 text-coral" />
-                        <span className="text-sm">
+                        <Gauge className="w-3 h-3 text-coral" />
+                        <span className="text-xs">
                           <span className="font-semibold">Depth:</span> {dive.maxDepth}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-accent" />
-                        <span className="text-sm">
+                        <Clock className="w-3 h-3 text-accent" />
+                        <span className="text-xs">
                           <span className="font-semibold">Time:</span> {dive.duration}
                         </span>
                       </div>
-                      <div className="text-sm">
+                      <div className="text-xs">
                         <span className="font-semibold">Visibility:</span> {dive.visibility}
                       </div>
                     </div>
 
-                    <p className="text-sm text-muted-foreground line-clamp-2">{dive.notes}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{dive.notes}</p>
                   </div>
                 </div>
               </Card>

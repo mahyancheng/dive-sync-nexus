@@ -95,7 +95,7 @@ const Shop = () => {
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 gap-3">
           {products.map((product, index) => (
             <Card key={index} className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group">
               {/* Image */}
@@ -106,41 +106,36 @@ const Shop = () => {
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
                 {/* Badges */}
-                <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
                   {product.badges.map((badge, i) => (
-                    <Badge key={i} className="glass-effect backdrop-blur-sm">
+                    <Badge key={i} className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
                       {badge}
                     </Badge>
                   ))}
                 </div>
                 {/* Quick Actions */}
-                <div className="absolute top-3 right-3">
-                  <Button size="icon" variant="secondary" className="glass-effect backdrop-blur-sm h-8 w-8">
-                    <ShoppingCart className="w-4 h-4" />
+                <div className="absolute top-2 right-2">
+                  <Button size="icon" variant="secondary" className="glass-effect backdrop-blur-sm h-7 w-7">
+                    <ShoppingCart className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground mb-1">{product.brand}</p>
-                    <h3 className="font-semibold text-base mb-1 line-clamp-2">{product.title}</h3>
-                  </div>
-                </div>
+              <div className="p-3">
+                <p className="text-xs text-muted-foreground mb-0.5">{product.brand}</p>
+                <h3 className="font-semibold text-sm mb-2 line-clamp-2">{product.title}</h3>
 
-                <div className="flex items-center gap-1 mb-3 text-sm">
-                  <Star className="w-4 h-4 text-accent fill-accent" />
+                <div className="flex items-center gap-1 mb-2 text-xs">
+                  <Star className="w-3 h-3 text-accent fill-accent" />
                   <span className="font-semibold">{product.rating}</span>
                   <span className="text-muted-foreground">({product.reviews})</span>
-                  <TrendingUp className="w-3 h-3 ml-auto text-accent" />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold text-accent">${product.price}</div>
-                  <Button size="sm" variant="accent">
-                    Add to Cart
+                  <div className="text-lg font-bold text-accent">${product.price}</div>
+                  <Button size="sm" variant="accent" className="h-7 text-xs px-3">
+                    Add
                   </Button>
                 </div>
               </div>

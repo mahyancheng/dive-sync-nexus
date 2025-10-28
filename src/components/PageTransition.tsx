@@ -1,60 +1,49 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
-
-interface PageTransitionProps {
-  children: React.ReactNode;
-}
-
-const pageVariants = {
-  initial: (direction: number) => ({
-    x: direction > 0 ? "100%" : "-100%",
-    opacity: 0,
-  }),
-  animate: {
-    x: 0,
-    opacity: 1,
-    transition: {
-      type: "spring" as const,
-      stiffness: 300,
-      damping: 30,
-    },
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? "-100%" : "100%",
-    opacity: 0,
-    transition: {
-      type: "spring" as const,
-      stiffness: 300,
-      damping: 30,
-    },
-  }),
-};
+import { useEffect, useState } from "react";
+import Feed from "@/pages/Feed";
+import Explore from "@/pages/Explore";
+import Shop from "@/pages/Shop";
 
 const routeOrder = ["/", "/explore", "/shop"];
 
-export const PageTransition = ({ children }: PageTransitionProps) => {
+export const PageTransition = () => {
   const location = useLocation();
-  
-  const getDirection = () => {
-    const currentIndex = routeOrder.indexOf(location.pathname);
-    const previousIndex = routeOrder.indexOf(sessionStorage.getItem("previousPath") || "/");
-    sessionStorage.setItem("previousPath", location.pathname);
-    return currentIndex > previousIndex ? 1 : -1;
-  };
+  const [position, setPosition] = useState(0);
+
+  useEffect(() => {
+    const index = routeOrder.indexOf(location.pathname);
+    if (index !== -1) {
+      setPosition(index);
+    }
+  }, [location.pathname]);
 
   return (
-    <AnimatePresence mode="wait" custom={getDirection()}>
-      <motion.div
-        key={location.pathname}
-        custom={getDirection()}
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        style={{ width: "100%", height: "100%" }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      className="flex w-full h-full"
+      animate={{
+        x: `${-position * 100}%`,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 30,
+      }}
+    >
+      {/* Following Page */}
+      <div className="min-w-full h-full flex-shrink-0">
+        <Feed />
+      </div>
+      
+      {/* Explore Page */}
+      <div className="min-w-full h-full flex-shrink-0">
+        <Explore />
+      </div>
+      
+      {/* Shop Page */}
+      <div className="min-w-full h-full flex-shrink-0">
+        <Shop />
+      </div>
+    </motion.div>
   );
 };

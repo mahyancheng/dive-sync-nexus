@@ -18,9 +18,16 @@ const queryClient = new QueryClient();
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => (
   <>
-    <PageTransition>{children}</PageTransition>
+    {children}
     <BottomNav />
   </>
+);
+
+const MainPages = () => (
+  <div className="w-full h-screen overflow-hidden">
+    <PageTransition />
+    <BottomNav />
+  </div>
 );
 
 const App = () => (
@@ -30,9 +37,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AppLayout><Feed /></AppLayout>} />
-          <Route path="/explore" element={<AppLayout><Explore /></AppLayout>} />
-          <Route path="/shop" element={<AppLayout><Shop /></AppLayout>} />
+          <Route path="/" element={<MainPages />} />
+          <Route path="/explore" element={<MainPages />} />
+          <Route path="/shop" element={<MainPages />} />
           <Route path="/create" element={<AppLayout><Create /></AppLayout>} />
           <Route path="/logbook" element={<AppLayout><Logbook /></AppLayout>} />
           <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
