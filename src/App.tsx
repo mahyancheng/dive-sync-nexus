@@ -3,20 +3,21 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Index from "./pages/Index";
+import BottomNav from "./components/BottomNav";
 import Feed from "./pages/Feed";
 import Explore from "./pages/Explore";
+import Create from "./pages/Create";
 import Logbook from "./pages/Logbook";
+import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const Layout = ({ children }: { children: React.ReactNode }) => (
+const AppLayout = ({ children }: { children: React.ReactNode }) => (
   <>
-    <Navbar />
     {children}
+    <BottomNav />
   </>
 );
 
@@ -27,11 +28,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/feed" element={<Layout><Feed /></Layout>} />
-          <Route path="/explore" element={<Layout><Explore /></Layout>} />
-          <Route path="/logbook" element={<Layout><Logbook /></Layout>} />
-          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+          <Route path="/" element={<AppLayout><Feed /></AppLayout>} />
+          <Route path="/explore" element={<AppLayout><Explore /></AppLayout>} />
+          <Route path="/create" element={<AppLayout><Create /></AppLayout>} />
+          <Route path="/logbook" element={<AppLayout><Logbook /></AppLayout>} />
+          <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
+          <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

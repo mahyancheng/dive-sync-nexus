@@ -45,7 +45,7 @@ const Logbook = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pt-20 pb-12">
+    <div className="min-h-screen bg-background pt-4 pb-20">
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

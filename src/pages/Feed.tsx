@@ -1,11 +1,8 @@
 import { useState } from "react";
-import FeedCard from "@/components/FeedCard";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FeedPost from "@/components/FeedPost";
 
 const Feed = () => {
-  const [activeTab, setActiveTab] = useState("foryou");
-
-  // Mock data
+  // Mock data - TikTok style full-screen posts
   const posts = [
     {
       author: { name: "Sarah Ocean", avatar: "", role: "Dive Instructor" },
@@ -45,30 +42,10 @@ const Feed = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pt-20 pb-12">
-      <div className="container mx-auto px-4 max-w-2xl">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Dive Feed</h1>
-          <p className="text-muted-foreground">Discover amazing dive spots and trips from the community</p>
-        </div>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="foryou">For You</TabsTrigger>
-            <TabsTrigger value="nearby">Nearby</TabsTrigger>
-            <TabsTrigger value="following">Following</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Feed Cards */}
-        <div className="space-y-6">
-          {posts.map((post, index) => (
-            <FeedCard key={index} {...post} />
-          ))}
-        </div>
-      </div>
+    <div className="h-screen w-full overflow-y-scroll snap-y snap-mandatory bg-black">
+      {posts.map((post, index) => (
+        <FeedPost key={index} {...post} />
+      ))}
     </div>
   );
 };
