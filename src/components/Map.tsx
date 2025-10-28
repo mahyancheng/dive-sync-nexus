@@ -1,7 +1,7 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import { MapPin } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface DivePoint {
   id: string;
@@ -17,14 +17,6 @@ interface MapProps {
   className?: string;
 }
 
-// Fix for default marker icons in React-Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
 const Map = ({ divePoints = [], className = '' }: MapProps) => {
   const defaultDivePoints: DivePoint[] = [
     { id: '1', name: 'Blue Corner Wall', coordinates: [-8.0891, 134.2167], difficulty: 'Advanced', maxDepth: '28m' },
@@ -34,54 +26,54 @@ const Map = ({ divePoints = [], className = '' }: MapProps) => {
   ];
 
   const points = divePoints.length > 0 ? divePoints : defaultDivePoints;
-  const centerPosition: any = points.length > 0 
-    ? [points[0].coordinates[0], points[0].coordinates[1]] 
-    : [-15, 130];
 
   return (
     <div className={`relative ${className}`}>
-      {/* @ts-ignore - react-leaflet types issue */}
-      <MapContainer
-        center={centerPosition}
-        zoom={4}
-        className="w-full h-full rounded-lg"
-        style={{ zIndex: 0 }}
-      >
-        {/* @ts-ignore - react-leaflet types issue */}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      {/* Simple Map Placeholder with embedded OpenStreetMap iframe */}
+      <div className="w-full h-full rounded-lg overflow-hidden bg-muted relative">
+        <iframe
+          width="100%"
+          height="100%"
+          frameBorder="0"
+          scrolling="no"
+          marginHeight={0}
+          marginWidth={0}
+          src="https://www.openstreetmap.org/export/embed.html?bbox=110.0,-30.0,160.0,0.0&layer=mapnik&marker=-15,135"
+          style={{ border: 0 }}
+          title="Dive Sites Map"
         />
-        {points.map((point) => {
-          const position: any = [point.coordinates[0], point.coordinates[1]];
-          return (
-            // @ts-ignore - react-leaflet types issue
-            <Marker
-              key={point.id}
-              position={position}
-            >
-              <Popup>
-                <div className="p-2">
-                  <h3 className="font-bold text-sm mb-1">{point.name}</h3>
-                  {point.difficulty && (
-                    <p className="text-xs mb-1">
-                      <strong>Difficulty:</strong> {point.difficulty}
-                    </p>
-                  )}
-                  {point.maxDepth && (
-                    <p className="text-xs mb-1">
-                      <strong>Max Depth:</strong> {point.maxDepth}
-                    </p>
-                  )}
+        
+        {/* Overlay with dive points list */}
+        <div className="absolute bottom-4 left-4 right-4 max-h-48 overflow-y-auto space-y-2">
+          {points.map((point) => (
+            <Card key={point.id} className="p-3 glass-effect backdrop-blur-md border-accent/20 hover:shadow-glow transition-all cursor-pointer">
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-sm mb-1">{point.name}</h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {point.difficulty && (
+                      <Badge variant="secondary" className="text-xs">
+                        {point.difficulty}
+                      </Badge>
+                    )}
+                    {point.maxDepth && (
+                      <span className="text-xs text-muted-foreground">
+                        Max: {point.maxDepth}
+                      </span>
+                    )}
+                  </div>
                   {point.description && (
-                    <p className="text-xs mt-2">{point.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                      {point.description}
+                    </p>
                   )}
                 </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
