@@ -92,6 +92,28 @@ const Messages = () => {
     return state?.conversationId || params.get('c') || null;
   };
 
+  // If navigated with a target user id (?u=<userId>), create/get the DM then open it
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const targetUserId = params.get('u');
+    const hasConversationId = params.get('c');
+
+    if (!currentUserId || !targetUserId || hasConversationId) return;
+
+    (async () => {
+      const { data, error } = await supabase.rpc('create_or_get_direct_conversation', {
+        target_user_id: targetUserId,
+      });
+      if (!error && data) {
+        setSelectedConversation(data as string);
+        // Clean URL to use ?c= and keep state for redundancy
+        navigate(`/messages?c=${data}`, { replace: true, state: { conversationId: data } });
+        // Refresh conversations so header/meta populate
+        fetchConversations();
+      }
+    })();
+  }, [currentUserId, location.search]);
+
   const fetchConversations = async () => {
     if (!currentUserId) return;
 
@@ -377,7 +399,7 @@ const Messages = () => {
               <Avatar className="h-10 w-10">
                 <AvatarImage src={selectedConv?.user.avatar} />
                 <AvatarFallback className="bg-accent text-accent-foreground">
-                  {selectedConv?.user.name.slice(0, 2).toUpperCase()}
+                  {(selectedConv?.user?.name ?? '??').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               {selectedConv?.user.online && (
@@ -386,7 +408,7 @@ const Messages = () => {
             </div>
 
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold truncate">{selectedConv?.user.name}</h2>
+              <h2 className="font-semibold truncate">{selectedConv?.user?.name ?? "Conversation"}</h2>
               <p className="text-xs text-muted-foreground">
                 {selectedConv?.user.online ? "Online" : "Offline"}
               </p>
