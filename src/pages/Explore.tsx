@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +8,45 @@ import { NavSwitcher } from "@/components/ui/nav-switcher";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TripDetail from "@/components/TripDetail";
 import Map from "@/components/Map";
+import AuthGuard from "@/components/AuthGuard";
+import { supabase } from "@/integrations/supabase/client";
 
 const Explore = () => {
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
-  const listings = [
+  const [experiences, setExperiences] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchExperiences();
+  }, []);
+
+  const fetchExperiences = async () => {
+    const { data, error } = await supabase
+      .from('experiences')
+      .select('*, dive_centers(name, avatar_url)')
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setExperiences(data);
+    }
+  };
+
+  const listings = experiences.length > 0 ? experiences.map(exp => ({
+    id: exp.id,
+    title: exp.title,
+    centre: (exp.dive_centers as any)?.name || 'Dive Center',
+    location: exp.location,
+    price: exp.price,
+    rating: exp.rating || 0,
+    reviews: exp.reviews_count || 0,
+    image: exp.image_url || 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800',
+    nextDate: exp.next_date ? new Date(exp.next_date).toLocaleDateString() : 'TBD',
+    seatsLeft: exp.spots_left,
+    badges: exp.badges || [],
+    description: exp.description,
+    duration: exp.duration,
+    difficulty: exp.difficulty,
+    includes: exp.includes,
+  })) : [
     {
       title: "2-Tank Morning Reef Dive",
       centre: "Ocean Adventures",
@@ -77,7 +112,8 @@ const Explore = () => {
   }));
 
   return (
-    <div className="w-screen min-h-screen bg-background pt-4 pb-20">
+    <AuthGuard>
+      <div className="w-screen min-h-screen bg-background pt-4 pb-20">
       <div className="w-full px-4 pt-16">
         {/* Header */}
         <div className="mb-8">
@@ -193,6 +229,7 @@ const Explore = () => {
         />
       )}
     </div>
+    </AuthGuard>
   );
 };
 

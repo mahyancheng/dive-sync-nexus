@@ -4,7 +4,8 @@ import { Camera, Video, Image as ImageIcon, X } from "lucide-react";
 
 const Create = () => {
   return (
-    <div className="min-h-screen bg-background pt-4 pb-20">
+    <AuthGuard>
+      <div className="min-h-screen bg-background pt-4 pb-20">
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

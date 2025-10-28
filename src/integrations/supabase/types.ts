@@ -191,6 +191,80 @@ export type Database = {
           },
         ]
       }
+      experiences: {
+        Row: {
+          badges: string[] | null
+          created_at: string | null
+          description: string | null
+          difficulty: string
+          dive_center_id: string | null
+          duration: string
+          id: string
+          image_url: string | null
+          includes: string[] | null
+          location: string
+          max_depth: string | null
+          next_date: string | null
+          price: number
+          rating: number | null
+          reviews_count: number | null
+          spots_left: number
+          title: string
+          total_spots: number
+          updated_at: string | null
+        }
+        Insert: {
+          badges?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string
+          dive_center_id?: string | null
+          duration: string
+          id?: string
+          image_url?: string | null
+          includes?: string[] | null
+          location: string
+          max_depth?: string | null
+          next_date?: string | null
+          price: number
+          rating?: number | null
+          reviews_count?: number | null
+          spots_left?: number
+          title: string
+          total_spots?: number
+          updated_at?: string | null
+        }
+        Update: {
+          badges?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string
+          dive_center_id?: string | null
+          duration?: string
+          id?: string
+          image_url?: string | null
+          includes?: string[] | null
+          location?: string
+          max_depth?: string | null
+          next_date?: string | null
+          price?: number
+          rating?: number | null
+          reviews_count?: number | null
+          spots_left?: number
+          title?: string
+          total_spots?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiences_dive_center_id_fkey"
+            columns: ["dive_center_id"]
+            isOneToOne: false
+            referencedRelation: "dive_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -262,9 +336,11 @@ export type Database = {
           comments_count: number | null
           created_at: string | null
           dive_center_id: string | null
+          experience_id: string | null
           id: string
           image_url: string
           likes_count: number | null
+          product_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -273,9 +349,11 @@ export type Database = {
           comments_count?: number | null
           created_at?: string | null
           dive_center_id?: string | null
+          experience_id?: string | null
           id?: string
           image_url: string
           likes_count?: number | null
+          product_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -284,9 +362,11 @@ export type Database = {
           comments_count?: number | null
           created_at?: string | null
           dive_center_id?: string | null
+          experience_id?: string | null
           id?: string
           image_url?: string
           likes_count?: number | null
+          product_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -297,7 +377,72 @@ export type Database = {
             referencedRelation: "dive_centers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "posts_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      products: {
+        Row: {
+          badges: string[] | null
+          brand: string | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          in_stock: boolean | null
+          price: number
+          rating: number | null
+          reviews_count: number | null
+          seller_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          badges?: string[] | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          in_stock?: boolean | null
+          price: number
+          rating?: number | null
+          reviews_count?: number | null
+          seller_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          badges?: string[] | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          in_stock?: boolean | null
+          price?: number
+          rating?: number | null
+          reviews_count?: number | null
+          seller_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

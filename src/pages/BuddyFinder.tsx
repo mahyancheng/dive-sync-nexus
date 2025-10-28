@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +8,51 @@ import { MapPin, Calendar, Users, Anchor, Clock, DollarSign, Search as SearchIco
 import { Input } from "@/components/ui/input";
 import ProfileDetail from "@/components/ProfileDetail";
 import TripDetail from "@/components/TripDetail";
+import AuthGuard from "@/components/AuthGuard";
+import { supabase } from "@/integrations/supabase/client";
 
 const BuddyFinder = () => {
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [experiences, setExperiences] = useState<any[]>([]);
 
-  const diveBuddies = [
+  useEffect(() => {
+    fetchUsers();
+    fetchExperiences();
+  }, []);
+
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .limit(20);
+    if (data) setUsers(data);
+  };
+
+  const fetchExperiences = async () => {
+    const { data } = await supabase
+      .from('experiences')
+      .select('*, dive_centers(name)')
+      .limit(20);
+    if (data) setExperiences(data);
+  };
+
+  const diveBuddies = users.length > 0 ? users.map(u => ({
+    id: u.id,
+    name: u.full_name || u.username,
+    avatar: u.avatar_url,
+    role: u.bio || 'Diver',
+    location: u.location || 'Unknown',
+    bio: u.bio,
+    totalDives: u.total_dives || 0,
+    certifications: u.certifications || [],
+    joinedDate: new Date(u.joined_date).toLocaleDateString(),
+    availability: 'Available',
+    preferredSites: [],
+    posts: [],
+  })) : [
     {
       name: "Sarah Ocean",
       avatar: "",
@@ -65,7 +103,22 @@ const BuddyFinder = () => {
     },
   ];
 
-  const upcomingTrips = [
+  const upcomingTrips = experiences.length > 0 ? experiences.map(exp => ({
+    id: exp.id,
+    title: exp.title,
+    location: exp.location,
+    price: exp.price,
+    rating: exp.rating || 0,
+    image: exp.image_url || 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800',
+    date: exp.next_date ? new Date(exp.next_date).toLocaleDateString() : 'TBD',
+    duration: exp.duration,
+    spotsLeft: exp.spots_left,
+    totalSpots: exp.total_spots,
+    operator: (exp.dive_centers as any)?.name || 'Dive Center',
+    difficulty: exp.difficulty,
+    includes: exp.includes || [],
+    description: exp.description,
+  })) : [
     {
       title: "Great Barrier Reef Expedition",
       location: "Cairns, Australia",
@@ -114,7 +167,8 @@ const BuddyFinder = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pt-4 pb-20">
+    <AuthGuard>
+      <div className="min-h-screen bg-background pt-4 pb-20">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Header */}
         <div className="mb-8">
@@ -295,6 +349,7 @@ const BuddyFinder = () => {
         />
       )}
     </div>
+    </AuthGuard>
   );
 };
 

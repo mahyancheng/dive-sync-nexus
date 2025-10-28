@@ -185,6 +185,7 @@ const Feed = () => {
         <FeedPost key={index} {...post} />
       ))}
     </div>
+    </AuthGuard>
   );
 };
 

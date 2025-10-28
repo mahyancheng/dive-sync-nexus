@@ -141,6 +141,7 @@ const CreatePost = () => {
         </Card>
       </div>
     </div>
+    </AuthGuard>
   );
 };
 

@@ -1,26 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, ShoppingCart, Star, TrendingUp, Heart } from "lucide-react";
 import ProductDetail from "@/components/ProductDetail";
+import AuthGuard from "@/components/AuthGuard";
+import { supabase } from "@/integrations/supabase/client";
 
 const Shop = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [likedProducts, setLikedProducts] = useState<Set<number>>(new Set());
+  const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
+  const [productsData, setProductsData] = useState<any[]>([]);
 
-  const toggleLike = (index: number) => {
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    const { data } = await supabase
+      .from('products')
+      .select('*')
+      .eq('in_stock', true)
+      .limit(20);
+    if (data) setProductsData(data);
+  };
+
+  const toggleLike = (id: string) => {
     const newLiked = new Set(likedProducts);
-    if (newLiked.has(index)) {
-      newLiked.delete(index);
+    if (newLiked.has(id)) {
+      newLiked.delete(id);
     } else {
-      newLiked.add(index);
+      newLiked.add(id);
     }
     setLikedProducts(newLiked);
   };
 
-  const products = [
+  const products = productsData.length > 0 ? productsData.map(p => ({
+    id: p.id,
+    title: p.title,
+    brand: p.brand,
+    price: p.price,
+    rating: p.rating || 0,
+    reviews: p.reviews_count || 0,
+    image: p.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800',
+    badges: p.badges || [],
+    inStock: p.in_stock,
+  })) : [
     {
       title: "Professional Dive Computer",
       brand: "Suunto",
@@ -84,7 +110,8 @@ const Shop = () => {
   ];
 
   return (
-    <div className="w-screen min-h-screen bg-background pt-4 pb-20">
+    <AuthGuard>
+      <div className="w-screen min-h-screen bg-background pt-4 pb-20">
       <div className="w-full px-4 pt-16">
         {/* Header */}
         <div className="mb-8">
@@ -128,17 +155,17 @@ const Shop = () => {
                 </div>
 
                 {/* Like Button */}
-                <Button
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleLike(index);
-                  }}
-                  className="absolute top-2 right-2 h-7 w-7 rounded-full glass-effect backdrop-blur-sm"
-                  variant="ghost"
-                >
-                  <Heart className={`w-3.5 h-3.5 ${likedProducts.has(index) ? 'fill-coral text-coral' : ''}`} />
-                </Button>
+                  <Button
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLike(product.id);
+                    }}
+                    className="absolute top-2 right-2 h-7 w-7 rounded-full glass-effect backdrop-blur-sm"
+                    variant="ghost"
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${likedProducts.has(product.id) ? 'fill-coral text-coral' : ''}`} />
+                  </Button>
               </div>
 
               <Card className="border-none rounded-t-xl -mt-2">
@@ -187,6 +214,7 @@ const Shop = () => {
         />
       )}
     </div>
+    </AuthGuard>
   );
 };
 

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AuthGuard from "@/components/AuthGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
@@ -172,7 +173,8 @@ const Messages = () => {
   const selectedConv = conversations.find(c => c.id === selectedConversation);
 
   return (
-    <div className="h-screen bg-background pt-4 pb-20 overflow-hidden">
+    <AuthGuard>
+      <div className="h-screen bg-background pt-4 pb-20 overflow-hidden">
       {!selectedConversation ? (
         // Conversations List
         <div className="h-full flex flex-col">
@@ -434,6 +436,7 @@ const Messages = () => {
         </div>
       )}
     </div>
+    </AuthGuard>
   );
 };
 
