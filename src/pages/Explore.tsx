@@ -58,13 +58,13 @@ const Explore = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pt-4 pb-20">
+    <div className="w-full h-full min-h-screen bg-background pt-4 pb-20 overflow-x-hidden">
       {/* Top Navigation */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         <NavSwitcher defaultValue="explore" />
       </div>
       
-      <div className="container mx-auto px-4 max-w-7xl pt-16">
+      <div className="container mx-auto px-4 max-w-full pt-16">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Explore Dive Trips</h1>
@@ -83,9 +83,9 @@ const Explore = () => {
         </div>
 
         {/* Listings Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 gap-3">
           {listings.map((listing, index) => (
-            <Card key={index} className="overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group">
+            <Card key={index} className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group">
               {/* Image */}
               <div className="relative aspect-[4/3] overflow-hidden">
                 <img
@@ -94,49 +94,49 @@ const Explore = () => {
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
                 {/* Badges */}
-                <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
                   {listing.badges.map((badge, i) => (
-                    <Badge key={i} className="bg-card/90 backdrop-blur-sm">
+                    <Badge key={i} className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
                       {badge}
                     </Badge>
                   ))}
                 </div>
                 {/* Price */}
-                <div className="absolute bottom-3 right-3">
-                  <div className="bg-card/90 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-                    <span className="text-lg font-bold text-accent">${listing.price}</span>
+                <div className="absolute bottom-2 right-2">
+                  <div className="glass-effect backdrop-blur-sm px-2 py-1 rounded-lg">
+                    <span className="text-sm font-bold text-accent">${listing.price}</span>
                   </div>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="p-4">
-                <h3 className="font-semibold text-lg mb-1 line-clamp-1">{listing.title}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{listing.centre}</p>
+              <div className="p-3">
+                <h3 className="font-semibold text-sm mb-1 line-clamp-2">{listing.title}</h3>
+                <p className="text-xs text-muted-foreground mb-2">{listing.centre}</p>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{listing.location}</span>
+                <div className="space-y-1.5 mb-3">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <MapPin className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground truncate">{listing.location}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
                     <span className="text-muted-foreground">{listing.nextDate}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-coral fill-coral" />
+                      <Star className="w-3 h-3 text-coral fill-coral" />
                       <span className="font-semibold">{listing.rating}</span>
                       <span className="text-muted-foreground">({listing.reviews})</span>
                     </div>
                     <div className="flex items-center gap-1 text-muted-foreground">
-                      <Users className="w-4 h-4" />
+                      <Users className="w-3 h-3" />
                       <span>{listing.seatsLeft} left</span>
                     </div>
                   </div>
                 </div>
 
-                <Button className="w-full" variant="accent">
+                <Button size="sm" className="w-full h-7 text-xs" variant="accent">
                   Book Now
                 </Button>
               </div>

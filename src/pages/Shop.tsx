@@ -70,13 +70,13 @@ const Shop = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pt-4 pb-20">
+    <div className="w-full h-full min-h-screen bg-background pt-4 pb-20 overflow-x-hidden">
       {/* Top Navigation */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         <NavSwitcher defaultValue="shop" />
       </div>
       
-      <div className="container mx-auto px-4 max-w-7xl pt-16">
+      <div className="container mx-auto px-4 max-w-full pt-16">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Dive Gear Shop</h1>
