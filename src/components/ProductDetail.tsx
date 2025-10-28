@@ -28,7 +28,7 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
   const [quantity, setQuantity] = useState(1);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center">
+    <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -36,7 +36,7 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
       />
       
       {/* Product Detail Card */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background rounded-t-3xl md:rounded-3xl animate-in slide-in-from-bottom md:slide-in-from-bottom-0 duration-300">
+      <div className="relative w-screen md:w-full md:max-w-2xl h-[95vh] md:max-h-[90vh] overflow-y-auto bg-background rounded-t-3xl md:rounded-3xl animate-in slide-in-from-bottom md:slide-in-from-bottom-0 duration-300">
         {/* Close Button */}
         <Button
           size="icon"

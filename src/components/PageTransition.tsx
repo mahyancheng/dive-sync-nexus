@@ -5,6 +5,7 @@ import Feed from "@/pages/Feed";
 import Explore from "@/pages/Explore";
 import Shop from "@/pages/Shop";
 import { NavSwitcher } from "@/components/ui/nav-switcher";
+import Search from "@/components/Search";
 
 const routeOrder = ["/", "/explore", "/shop"];
 
@@ -25,6 +26,9 @@ export const PageTransition = () => {
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100]">
         <NavSwitcher defaultValue={position === 0 ? "following" : position === 1 ? "explore" : "shop"} />
       </div>
+
+      {/* Search Button - Always on Top Right */}
+      <Search />
 
       <motion.div
         className="flex h-full"
