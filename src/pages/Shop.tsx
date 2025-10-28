@@ -1,11 +1,25 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, ShoppingCart, Star, TrendingUp } from "lucide-react";
-import { NavSwitcher } from "@/components/ui/nav-switcher";
+import { Search, ShoppingCart, Star, TrendingUp, Heart } from "lucide-react";
+import ProductDetail from "@/components/ProductDetail";
 
 const Shop = () => {
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [likedProducts, setLikedProducts] = useState<Set<number>>(new Set());
+
+  const toggleLike = (index: number) => {
+    const newLiked = new Set(likedProducts);
+    if (newLiked.has(index)) {
+      newLiked.delete(index);
+    } else {
+      newLiked.add(index);
+    }
+    setLikedProducts(newLiked);
+  };
+
   const products = [
     {
       title: "Professional Dive Computer",
@@ -71,11 +85,6 @@ const Shop = () => {
 
   return (
     <div className="w-screen min-h-screen bg-background pt-4 pb-20">
-      {/* Top Navigation */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
-        <NavSwitcher defaultValue="shop" />
-      </div>
-      
       <div className="w-full px-4 pt-16">
         {/* Header */}
         <div className="mb-8">
@@ -97,52 +106,86 @@ const Shop = () => {
         {/* Products Grid */}
         <div className="grid grid-cols-2 gap-3">
           {products.map((product, index) => (
-            <Card key={index} className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group">
-              {/* Image */}
-              <div className="relative aspect-square overflow-hidden bg-secondary/20">
+            <div
+              key={index}
+              className="relative max-w-full rounded-xl bg-gradient-to-br from-neutral-600/30 to-violet-300/30 overflow-hidden cursor-pointer bento-card hover:shadow-glow transition-all"
+              onClick={() => setSelectedProduct(product)}
+            >
+              <div className="relative h-48 flex items-center justify-center bg-gradient-to-br from-secondary/20 to-accent/10">
                 <img
                   src={product.image}
                   alt={product.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  className="w-full h-full object-cover"
                 />
-                {/* Badges */}
+                
+                {/* Floating Badges */}
                 <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                  {product.badges.map((badge, i) => (
+                  {product.badges.slice(0, 1).map((badge, i) => (
                     <Badge key={i} className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
                       {badge}
                     </Badge>
                   ))}
                 </div>
-                {/* Quick Actions */}
-                <div className="absolute top-2 right-2">
-                  <Button size="icon" variant="secondary" className="glass-effect backdrop-blur-sm h-7 w-7">
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+
+                {/* Like Button */}
+                <Button
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike(index);
+                  }}
+                  className="absolute top-2 right-2 h-7 w-7 rounded-full glass-effect backdrop-blur-sm"
+                  variant="ghost"
+                >
+                  <Heart className={`w-3.5 h-3.5 ${likedProducts.has(index) ? 'fill-coral text-coral' : ''}`} />
+                </Button>
               </div>
 
-              {/* Content */}
-              <div className="p-3">
-                <p className="text-xs text-muted-foreground mb-0.5">{product.brand}</p>
-                <h3 className="font-semibold text-sm mb-2 line-clamp-2">{product.title}</h3>
+              <Card className="border-none rounded-t-xl -mt-2">
+                <div className="p-3 space-y-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{product.brand}</p>
+                    <h3 className="font-semibold text-sm line-clamp-2 leading-tight">{product.title}</h3>
+                  </div>
 
-                <div className="flex items-center gap-1 mb-2 text-xs">
-                  <Star className="w-3 h-3 text-accent fill-accent" />
-                  <span className="font-semibold">{product.rating}</span>
-                  <span className="text-muted-foreground">({product.reviews})</span>
-                </div>
+                  <div className="flex items-center gap-1 text-xs">
+                    <Star className="w-3 h-3 text-accent fill-accent" />
+                    <span className="font-semibold">{product.rating}</span>
+                    <span className="text-muted-foreground">({product.reviews})</span>
+                  </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="text-lg font-bold text-accent">${product.price}</div>
-                  <Button size="sm" variant="accent" className="h-7 text-xs px-3">
-                    Add
-                  </Button>
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground uppercase">Price</span>
+                      <span className="text-lg font-bold text-accent">${product.price}</span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="accent" 
+                      className="h-7 text-xs px-3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Add to cart logic
+                      }}
+                    >
+                      <ShoppingCart className="w-3 h-3 mr-1" />
+                      Add
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           ))}
         </div>
       </div>
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <ProductDetail
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   );
 };

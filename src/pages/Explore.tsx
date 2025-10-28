@@ -59,11 +59,6 @@ const Explore = () => {
 
   return (
     <div className="w-screen min-h-screen bg-background pt-4 pb-20">
-      {/* Top Navigation */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
-        <NavSwitcher defaultValue="explore" />
-      </div>
-      
       <div className="w-full px-4 pt-16">
         {/* Header */}
         <div className="mb-8">

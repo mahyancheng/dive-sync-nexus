@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Feed from "@/pages/Feed";
 import Explore from "@/pages/Explore";
 import Shop from "@/pages/Shop";
+import { NavSwitcher } from "@/components/ui/nav-switcher";
 
 const routeOrder = ["/", "/explore", "/shop"];
 
@@ -20,6 +21,11 @@ export const PageTransition = () => {
 
   return (
     <div className="w-screen h-screen overflow-hidden">
+      {/* Floating Navigation - Always on Top */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100]">
+        <NavSwitcher defaultValue={position === 0 ? "following" : position === 1 ? "explore" : "shop"} />
+      </div>
+
       <motion.div
         className="flex h-full"
         animate={{
