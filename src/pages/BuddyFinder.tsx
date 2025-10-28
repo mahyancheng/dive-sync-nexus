@@ -1,0 +1,285 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapPin, Calendar, Users, Anchor, Clock, DollarSign, Search as SearchIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import ProfileDetail from "@/components/ProfileDetail";
+import TripDetail from "@/components/TripDetail";
+
+const BuddyFinder = () => {
+  const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const diveBuddies = [
+    {
+      name: "Sarah Ocean",
+      avatar: "",
+      role: "Dive Instructor",
+      location: "Cairns, Australia",
+      bio: "PADI Master Scuba Diver Trainer with 15 years of experience. Love wreck diving and underwater photography!",
+      totalDives: 487,
+      certifications: ["PADI Master Scuba Diver Trainer", "PADI Rescue Diver", "EFR Instructor", "Underwater Photography Specialist"],
+      joinedDate: "January 2020",
+      availability: "Available this weekend",
+      preferredSites: ["Great Barrier Reef", "SS Yongala Wreck"],
+      posts: [
+        { image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400", caption: "Epic dive", likes: 342 },
+        { image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400", caption: "Wreck diving", likes: 289 },
+        { image: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400", caption: "Beautiful reef", likes: 156 },
+      ]
+    },
+    {
+      name: "Mike Deep",
+      avatar: "",
+      role: "Advanced Diver",
+      location: "Bali, Indonesia",
+      bio: "Technical diver specializing in deep wrecks. Always looking for the next adventure!",
+      totalDives: 312,
+      certifications: ["PADI Advanced Open Water", "TDI Advanced Nitrox", "PADI Wreck Diver"],
+      joinedDate: "June 2021",
+      availability: "Available next week",
+      preferredSites: ["USS Liberty Wreck", "Tulamben Drop Off"],
+      posts: [
+        { image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400", caption: "Wreck exploration", likes: 201 },
+      ]
+    },
+    {
+      name: "Emma Coral",
+      avatar: "",
+      role: "Marine Biologist",
+      location: "Palau",
+      bio: "Marine conservation researcher. Looking for dive buddies interested in reef monitoring and data collection.",
+      totalDives: 198,
+      certifications: ["PADI Rescue Diver", "Coral Reef Research Diver", "PADI Peak Performance Buoyancy"],
+      joinedDate: "March 2022",
+      availability: "Available weekdays",
+      preferredSites: ["Blue Corner", "German Channel"],
+      posts: [
+        { image: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400", caption: "Research dive", likes: 178 },
+        { image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400", caption: "Coral study", likes: 134 },
+      ]
+    },
+  ];
+
+  const upcomingTrips = [
+    {
+      title: "Great Barrier Reef Expedition",
+      location: "Cairns, Australia",
+      price: 1200,
+      rating: 4.9,
+      image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800",
+      date: "Dec 15-20, 2025",
+      duration: "6 days",
+      spotsLeft: 3,
+      totalSpots: 12,
+      operator: "Ocean Adventures",
+      difficulty: "Intermediate",
+      includes: ["Accommodation", "All meals", "Equipment rental", "12 dives"],
+      description: "Explore the world's largest coral reef system with experienced guides. Visit iconic dive sites including Cod Hole and SS Yongala wreck.",
+    },
+    {
+      title: "Maldives Liveaboard Adventure",
+      location: "Male, Maldives",
+      price: 2400,
+      rating: 5.0,
+      image: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=800",
+      date: "Jan 10-17, 2026",
+      duration: "8 days",
+      spotsLeft: 5,
+      totalSpots: 16,
+      operator: "Blue Horizon Diving",
+      difficulty: "Advanced",
+      includes: ["Liveaboard accommodation", "All meals", "Equipment", "20+ dives", "Nitrox"],
+      description: "Ultimate liveaboard experience visiting the best dive sites in the Maldives. Night dives, manta rays, whale sharks guaranteed!",
+    },
+    {
+      title: "Bali Wreck Diving Week",
+      location: "Tulamben, Bali",
+      price: 850,
+      rating: 4.8,
+      image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800",
+      date: "Nov 25-30, 2025",
+      duration: "6 days",
+      spotsLeft: 8,
+      totalSpots: 10,
+      operator: "Bali Dive Center",
+      difficulty: "All levels",
+      includes: ["Hotel accommodation", "Breakfast", "Equipment", "10 dives", "USS Liberty access"],
+      description: "Discover the famous USS Liberty wreck and other incredible dive sites around Bali. Perfect for wreck diving enthusiasts!",
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background pt-4 pb-20">
+      <div className="container mx-auto px-4 max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Find Dive Buddies & Join Trips</h1>
+          <p className="text-muted-foreground">Connect with divers and explore amazing dive destinations</p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by location, dive site, or certification..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="buddies" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="buddies">
+              <Users className="w-4 h-4 mr-2" />
+              Dive Buddies
+            </TabsTrigger>
+            <TabsTrigger value="trips">
+              <Calendar className="w-4 h-4 mr-2" />
+              Upcoming Trips
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Dive Buddies Tab */}
+          <TabsContent value="buddies" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {diveBuddies.map((buddy, index) => (
+                <Card 
+                  key={index} 
+                  className="p-5 border-accent/20 hover:shadow-ocean transition-all cursor-pointer"
+                  onClick={() => setSelectedProfile(buddy)}
+                >
+                  <div className="flex items-start gap-4 mb-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={buddy.avatar} />
+                      <AvatarFallback className="bg-accent text-accent-foreground">
+                        {buddy.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg truncate">{buddy.name}</h3>
+                      <p className="text-sm text-muted-foreground">{buddy.role}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <MapPin className="w-3 h-3" />
+                        <span className="truncate">{buddy.location}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{buddy.bio}</p>
+
+                  <div className="flex items-center gap-4 mb-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Anchor className="w-4 h-4 text-accent" />
+                      <span className="font-semibold text-accent">{buddy.totalDives}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4 text-coral" />
+                      <span className="text-xs text-muted-foreground">{buddy.availability}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {buddy.preferredSites.slice(0, 2).map((site, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        {site}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <Button variant="accent" className="w-full">
+                    <Users className="w-4 h-4 mr-2" />
+                    Connect
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Upcoming Trips Tab */}
+          <TabsContent value="trips" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {upcomingTrips.map((trip, index) => (
+                <Card 
+                  key={index} 
+                  className="overflow-hidden border-accent/20 hover:shadow-ocean transition-all cursor-pointer"
+                  onClick={() => setSelectedTrip(trip)}
+                >
+                  <div className="relative h-48">
+                    <img src={trip.image} alt={trip.title} className="w-full h-full object-cover" />
+                    <div className="absolute top-3 right-3">
+                      <Badge className="bg-accent text-accent-foreground">
+                        ⭐ {trip.rating}
+                      </Badge>
+                    </div>
+                    <div className="absolute top-3 left-3">
+                      <Badge className="bg-coral text-white">
+                        {trip.spotsLeft} spots left
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="font-bold text-lg mb-2">{trip.title}</h3>
+                    
+                    <div className="space-y-2 mb-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>{trip.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>{trip.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>{trip.duration}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-2xl font-bold text-accent">${trip.price}</div>
+                      <Badge variant="secondary">{trip.difficulty}</Badge>
+                    </div>
+
+                    <Button variant="coral" className="w-full">
+                      Join Trip
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Profile Detail Modal */}
+      {selectedProfile && (
+        <ProfileDetail
+          open={!!selectedProfile}
+          onOpenChange={(open) => !open && setSelectedProfile(null)}
+          profile={selectedProfile}
+        />
+      )}
+
+      {/* Trip Detail Modal */}
+      {selectedTrip && (
+        <TripDetail
+          trip={selectedTrip}
+          onClose={() => setSelectedTrip(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default BuddyFinder;

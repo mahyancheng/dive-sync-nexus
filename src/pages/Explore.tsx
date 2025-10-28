@@ -3,9 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Users, Calendar, Star } from "lucide-react";
+import { Search, MapPin, Users, Calendar, Star, Map as MapIcon } from "lucide-react";
 import { NavSwitcher } from "@/components/ui/nav-switcher";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TripDetail from "@/components/TripDetail";
+import Map from "@/components/Map";
 
 const Explore = () => {
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
@@ -60,6 +62,20 @@ const Explore = () => {
     },
   ];
 
+  const divePoints = listings.map(listing => ({
+    id: listing.title,
+    name: listing.title,
+    coordinates: [
+      listing.location.includes("Australia") ? [145.7781, -16.9186] :
+      listing.location.includes("Thailand") ? [98.3923, 7.8804] :
+      listing.location.includes("Maldives") ? [73.2207, 3.2028] :
+      listing.location.includes("USA") ? [-80.4305, 25.0869] :
+      [0, 0]
+    ][0] as [number, number],
+    difficulty: "All levels",
+    maxDepth: "30m"
+  }));
+
   return (
     <div className="w-screen min-h-screen bg-background pt-4 pb-20">
       <div className="w-full px-4 pt-16">
@@ -80,71 +96,93 @@ const Explore = () => {
           </div>
         </div>
 
-        {/* Listings Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {listings.map((listing, index) => (
-            <Card 
-              key={index} 
-              className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group"
-              onClick={() => setSelectedTrip(listing)}
-            >
-              {/* Image */}
-              <div className="relative aspect-[4/3] overflow-hidden">
-                <img
-                  src={listing.image}
-                  alt={listing.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                />
-                {/* Badges */}
-                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                  {listing.badges.map((badge, i) => (
-                    <Badge key={i} className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
-                      {badge}
-                    </Badge>
-                  ))}
-                </div>
-                {/* Price */}
-                <div className="absolute bottom-2 right-2">
-                  <div className="glass-effect backdrop-blur-sm px-2 py-1 rounded-lg">
-                    <span className="text-sm font-bold text-accent">${listing.price}</span>
-                  </div>
-                </div>
-              </div>
+        {/* Tabs for Grid/Map View */}
+        <Tabs defaultValue="grid" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="grid">
+              <Calendar className="w-4 h-4 mr-2" />
+              Grid View
+            </TabsTrigger>
+            <TabsTrigger value="map">
+              <MapIcon className="w-4 h-4 mr-2" />
+              Map View
+            </TabsTrigger>
+          </TabsList>
 
-              {/* Content */}
-              <div className="p-3">
-                <h3 className="font-semibold text-sm mb-1 line-clamp-2">{listing.title}</h3>
-                <p className="text-xs text-muted-foreground mb-2">{listing.centre}</p>
-
-                <div className="space-y-1.5 mb-3">
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <MapPin className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-muted-foreground truncate">{listing.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <Calendar className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">{listing.nextDate}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 text-coral fill-coral" />
-                      <span className="font-semibold">{listing.rating}</span>
-                      <span className="text-muted-foreground">({listing.reviews})</span>
+          <TabsContent value="grid" className="mt-0">
+            {/* Listings Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {listings.map((listing, index) => (
+                <Card 
+                  key={index} 
+                  className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group"
+                  onClick={() => setSelectedTrip(listing)}
+                >
+                  {/* Image */}
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <img
+                      src={listing.image}
+                      alt={listing.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                    {/* Badges */}
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                      {listing.badges.map((badge, i) => (
+                        <Badge key={i} className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
+                          {badge}
+                        </Badge>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Users className="w-3 h-3" />
-                      <span>{listing.seatsLeft} left</span>
+                    {/* Price */}
+                    <div className="absolute bottom-2 right-2">
+                      <div className="glass-effect backdrop-blur-sm px-2 py-1 rounded-lg">
+                        <span className="text-sm font-bold text-accent">${listing.price}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <Button size="sm" className="w-full h-7 text-xs" variant="accent">
-                  Book Now
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+                  {/* Content */}
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-1 line-clamp-2">{listing.title}</h3>
+                    <p className="text-xs text-muted-foreground mb-2">{listing.centre}</p>
+
+                    <div className="space-y-1.5 mb-3">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <MapPin className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground truncate">{listing.location}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Calendar className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">{listing.nextDate}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-coral fill-coral" />
+                          <span className="font-semibold">{listing.rating}</span>
+                          <span className="text-muted-foreground">({listing.reviews})</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Users className="w-3 h-3" />
+                          <span>{listing.seatsLeft} left</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button size="sm" className="w-full h-7 text-xs" variant="accent">
+                      Book Now
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="map" className="mt-0">
+            <div className="h-[600px] w-full">
+              <Map divePoints={divePoints} className="h-full w-full" />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Trip Detail Modal */}

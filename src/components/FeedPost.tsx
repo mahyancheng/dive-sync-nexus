@@ -4,6 +4,7 @@ import { Heart, MessageCircle, Share2, Bookmark, MapPin, Users, Calendar, Gauge,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import DiveLogDetail from "./DiveLogDetail";
+import ProfileDetail from "./ProfileDetail";
 
 interface DiveLog {
   site: string;
@@ -44,6 +45,21 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
   const [saved, setSaved] = useState(false);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
   const [showDiveDetail, setShowDiveDetail] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
+  const profileData = {
+    name: author.name,
+    avatar: author.avatar,
+    role: author.role,
+    location: "Pacific Ocean",
+    bio: "Passionate diver exploring the world's oceans 🌊",
+    totalDives: 156,
+    certifications: ["PADI Advanced Open Water", "PADI Rescue Diver", "Nitrox Certified"],
+    joinedDate: "January 2023",
+    posts: [
+      { image, caption, likes }
+    ]
+  };
 
   return (
     <div className="relative h-screen w-full snap-start snap-always">
@@ -64,7 +80,12 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
           {/* Author Name (Bold) + Caption */}
           <div>
             <p className="text-white drop-shadow-lg text-sm">
-              <span className="font-bold">{author.name}</span>
+              <span 
+                className="font-bold cursor-pointer hover:underline" 
+                onClick={() => setShowProfile(true)}
+              >
+                {author.name}
+              </span>
               {listing && (
                 <Badge variant="secondary" className="bg-coral/90 text-white border-coral/20 backdrop-blur-sm ml-2 align-middle">
                   Bookable
@@ -214,6 +235,13 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
           totalDives={diveLogs.length}
         />
       )}
+
+      {/* Profile Detail Modal */}
+      <ProfileDetail
+        open={showProfile}
+        onOpenChange={setShowProfile}
+        profile={profileData}
+      />
     </div>
   );
 };

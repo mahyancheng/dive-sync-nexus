@@ -12,6 +12,7 @@ import Create from "./pages/Create";
 import Logbook from "./pages/Logbook";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
+import BuddyFinder from "./pages/BuddyFinder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
           <Route path="/logbook" element={<AppLayout><Logbook /></AppLayout>} />
           <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/buddy-finder" element={<AppLayout><BuddyFinder /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
