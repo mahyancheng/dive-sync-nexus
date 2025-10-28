@@ -105,10 +105,10 @@ const Search = () => {
       <Button
         size="icon"
         onClick={() => setIsOpen(true)}
-        className="fixed top-4 right-4 z-[90] rounded-full glass-effect backdrop-blur-sm"
+        className="fixed top-3 right-3 z-[90] rounded-full glass-effect backdrop-blur-sm h-9 w-9 md:h-10 md:w-10 md:top-4 md:right-4"
         variant="ghost"
       >
-        <SearchIcon className="w-5 h-5" />
+        <SearchIcon className="w-4 h-4 md:w-5 md:h-5" />
       </Button>
 
       {/* Search Modal */}

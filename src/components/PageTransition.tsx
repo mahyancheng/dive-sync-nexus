@@ -23,7 +23,7 @@ export const PageTransition = () => {
   return (
     <div className="w-screen h-screen overflow-hidden">
       {/* Floating Navigation - Always on Top */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100]">
+      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] md:top-4">
         <NavSwitcher defaultValue={position === 0 ? "following" : position === 1 ? "explore" : "shop"} />
       </div>
 
