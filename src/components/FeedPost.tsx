@@ -58,32 +58,20 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
       </div>
 
       {/* Content Overlay */}
-      <div className="relative h-full flex flex-col justify-between p-4 pb-20">
-        {/* Top - Author Info */}
-        <div className="flex items-center gap-3 max-w-[70%] glass-effect rounded-xl p-3">
-          <Avatar className="border-2 border-white/20">
-            <AvatarImage src={author.avatar} />
-            <AvatarFallback className="bg-accent text-accent-foreground">
-              {author.name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white drop-shadow-lg truncate">{author.name}</p>
-            <p className="text-sm text-white/80 drop-shadow-lg truncate">{author.role}</p>
-          </div>
-          {listing && (
-            <Badge variant="secondary" className="bg-coral/90 text-white border-coral/20 backdrop-blur-sm shrink-0">
-              Bookable
-            </Badge>
-          )}
-        </div>
-
-        {/* Bottom - Caption (compact), Dive Logs & Shoppable Tag */}
+      <div className="relative h-full flex flex-col justify-end p-4 pb-20">
+        {/* Bottom - Author Name, Caption, Dive Logs & Shoppable Tag */}
         <div className="space-y-3 max-w-[85%]">
-          {/* Caption - compact */}
+          {/* Author Name (Bold) + Caption */}
           <div>
-            <p className="text-white drop-shadow-lg text-sm line-clamp-2">
-              <span className="font-semibold">{author.name}</span>{" "}
+            <p className="text-white drop-shadow-lg text-sm">
+              <span className="font-bold">{author.name}</span>
+              {listing && (
+                <Badge variant="secondary" className="bg-coral/90 text-white border-coral/20 backdrop-blur-sm ml-2 align-middle">
+                  Bookable
+                </Badge>
+              )}
+            </p>
+            <p className="text-white/90 drop-shadow-lg text-sm line-clamp-2 mt-1">
               {caption}
             </p>
           </div>

@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { PageTransition } from "./components/PageTransition";
 import BottomNav from "./components/BottomNav";
 import Feed from "./pages/Feed";
 import Explore from "./pages/Explore";
@@ -17,7 +18,7 @@ const queryClient = new QueryClient();
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => (
   <>
-    {children}
+    <PageTransition>{children}</PageTransition>
     <BottomNav />
   </>
 );
