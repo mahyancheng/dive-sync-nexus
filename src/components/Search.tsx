@@ -184,7 +184,6 @@ const Search = () => {
                               description: post.description,
                             };
                             setSelectedTrip(tripData);
-                            setIsOpen(false);
                           }}
                         >
                           <CardContent className="p-0">
@@ -231,7 +230,6 @@ const Search = () => {
                               inStock: true,
                             };
                             setSelectedProduct(productData);
-                            setIsOpen(false);
                           }}
                         >
                           <CardContent className="p-0">

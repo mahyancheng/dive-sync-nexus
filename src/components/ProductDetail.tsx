@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Portal from "@/components/Portal";
 
 interface Product {
   title: string;
@@ -26,23 +27,32 @@ interface ProductDetailProps {
 const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
   const [liked, setLiked] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4" style={{ position: 'fixed' }}>
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        style={{ position: 'fixed' }}
-      />
-      
-      {/* Product Detail Card */}
-      <div className="relative w-screen md:w-full md:max-w-2xl h-[95vh] md:max-h-[90vh] overflow-y-auto bg-background rounded-t-3xl md:rounded-3xl animate-in slide-in-from-bottom md:slide-in-from-bottom-0 duration-300" style={{ position: 'relative', zIndex: 1 }}>
+    <Portal>
+      <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4" style={{ position: 'fixed' }}>
+        {/* Backdrop */}
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={handleClose}
+          style={{ position: 'fixed' }}
+        />
+        
+        {/* Product Detail Card */}
+        <div className={`relative w-screen md:w-full md:max-w-2xl h-[95vh] md:max-h-[90vh] overflow-y-auto bg-background rounded-t-3xl md:rounded-3xl duration-300 ${isClosing ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom md:slide-in-from-bottom-0'}`} style={{ position: 'relative', zIndex: 1 }}>
         {/* Close Button */}
         <Button
           size="icon"
           variant="ghost"
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 z-10 rounded-full bg-background/80 backdrop-blur-sm"
         >
           <X className="w-5 h-5" />
@@ -175,7 +185,8 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
           </CardFooter>
         </Card>
       </div>
-    </div>
+      </div>
+    </Portal>
   );
 };
 
