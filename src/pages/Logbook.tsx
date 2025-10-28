@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Gauge, Clock, Plus, TrendingUp, Award } from "lucide-react";
 import DiveLogDetail from "@/components/DiveLogDetail";
+import AuthGuard from "@/components/AuthGuard";
 
 const Logbook = () => {
   const [selectedDive, setSelectedDive] = useState<any>(null);
@@ -79,7 +80,7 @@ const Logbook = () => {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background pt-4 pb-20">
-      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -175,7 +176,8 @@ const Logbook = () => {
           totalDives={127}
         />
       )}
-    </div>
+      </div>
+    </AuthGuard>
   );
 };
 

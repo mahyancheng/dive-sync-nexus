@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import FeedPost from "@/components/FeedPost";
 import { NavSwitcher } from "@/components/ui/nav-switcher";
 import { supabase } from "@/integrations/supabase/client";
+import AuthGuard from "@/components/AuthGuard";
 
 const Feed = () => {
   const [posts, setPosts] = useState<any[]>([]);
@@ -180,11 +181,12 @@ const Feed = () => {
   const displayPosts = posts.length > 0 ? posts : mockPosts;
 
   return (
-    <div className="w-screen h-screen overflow-y-auto snap-y snap-mandatory bg-black">
-      {displayPosts.map((post, index) => (
-        <FeedPost key={index} {...post} />
-      ))}
-    </div>
+    <AuthGuard>
+      <div className="h-screen snap-y snap-mandatory overflow-y-scroll bg-black">
+        {displayPosts.map((post, index) => (
+          <FeedPost key={index} {...post} />
+        ))}
+      </div>
     </AuthGuard>
   );
 };

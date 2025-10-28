@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, Image as ImageIcon } from "lucide-react";
+import AuthGuard from "@/components/AuthGuard";
 
 const CreatePost = () => {
   const [caption, setCaption] = useState("");
@@ -67,7 +68,8 @@ const CreatePost = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <AuthGuard>
+      <div className="min-h-screen bg-background pb-20">
       <div className="sticky top-0 z-10 glass-effect border-b border-accent/20">
         <div className="flex items-center gap-4 p-4">
           <Button

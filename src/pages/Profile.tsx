@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import AuthGuard from "@/components/AuthGuard";
 
 const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
@@ -68,7 +69,7 @@ const Profile = () => {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background pt-4 pb-20">
-      <div className="container mx-auto px-4 max-w-2xl">
+        <div className="container mx-auto px-4 max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Profile</h1>

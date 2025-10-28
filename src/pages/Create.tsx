@@ -1,12 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Camera, Video, Image as ImageIcon, X } from "lucide-react";
+import AuthGuard from "@/components/AuthGuard";
 
 const Create = () => {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background pt-4 pb-20">
-      <div className="container mx-auto px-4 max-w-2xl">
+        <div className="container mx-auto px-4 max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Create Post</h1>
@@ -78,6 +79,7 @@ const Create = () => {
         </Card>
       </div>
     </div>
+    </AuthGuard>
   );
 };
 
