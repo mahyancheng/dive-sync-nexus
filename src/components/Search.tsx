@@ -73,8 +73,14 @@ const handleMessageUser = async (userId: string) => {
     return;
   }
 
-  await supabase.rpc('create_or_get_direct_conversation', { target_user_id: userId });
-  navigate('/messages');
+  try {
+    const { data: conversationId, error } = await supabase.rpc('create_or_get_direct_conversation', { target_user_id: userId });
+    if (error) throw error;
+    navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
+  } catch (e) {
+    console.error('Error starting conversation from search:', e);
+    navigate('/messages');
+  }
 };
 
   const handleSearch = (query: string) => {

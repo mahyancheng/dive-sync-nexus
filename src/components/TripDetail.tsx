@@ -59,7 +59,7 @@ const TripDetail = ({ trip, onClose }: TripDetailProps) => {
       });
       
       if (error) throw error;
-      navigate('/messages', { state: { conversationId } });
+      navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
       handleClose();
     } catch (error) {
       console.error('Error creating conversation:', error);

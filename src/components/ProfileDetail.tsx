@@ -63,8 +63,8 @@ const handleMessage = async () => {
     
     if (error) throw error;
     
-    // Navigate to messages with the conversation ID
-    navigate('/messages', { state: { conversationId } });
+    // Navigate to messages with the conversation ID via state and query param
+    navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
     handleClose();
   } catch (error) {
     console.error('Error creating conversation:', error);
