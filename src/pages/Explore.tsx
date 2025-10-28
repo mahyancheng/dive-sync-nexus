@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Users, Calendar, Star } from "lucide-react";
 import { NavSwitcher } from "@/components/ui/nav-switcher";
+import TripDetail from "@/components/TripDetail";
 
 const Explore = () => {
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const listings = [
     {
       title: "2-Tank Morning Reef Dive",
@@ -80,7 +83,11 @@ const Explore = () => {
         {/* Listings Grid */}
         <div className="grid grid-cols-2 gap-3">
           {listings.map((listing, index) => (
-            <Card key={index} className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group">
+            <Card 
+              key={index} 
+              className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group"
+              onClick={() => setSelectedTrip(listing)}
+            >
               {/* Image */}
               <div className="relative aspect-[4/3] overflow-hidden">
                 <img
@@ -139,6 +146,14 @@ const Explore = () => {
           ))}
         </div>
       </div>
+
+      {/* Trip Detail Modal */}
+      {selectedTrip && (
+        <TripDetail
+          trip={selectedTrip}
+          onClose={() => setSelectedTrip(null)}
+        />
+      )}
     </div>
   );
 };

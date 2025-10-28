@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProductDetail from "@/components/ProductDetail";
+import TripDetail from "@/components/TripDetail";
 
 interface SearchResult {
   type: "post" | "product" | "account";
@@ -21,6 +23,8 @@ const Search = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
 
   // Mock data for demonstration
   const allData: SearchResult[] = [
@@ -113,7 +117,7 @@ const Search = () => {
 
       {/* Search Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-[150] flex flex-col bg-background">
+        <div className="fixed inset-0 z-[150] flex flex-col bg-background" style={{ position: 'fixed' }}>
           {/* Search Header */}
           <div className="sticky top-0 z-10 bg-background border-b p-4">
             <div className="flex items-center gap-2">
@@ -162,7 +166,27 @@ const Search = () => {
                     <h3 className="text-lg font-semibold mb-3">Posts</h3>
                     <div className="space-y-3">
                       {posts.map((post) => (
-                        <Card key={post.id} className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow">
+                        <Card 
+                          key={post.id} 
+                          className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => {
+                            const tripData = {
+                              title: post.title,
+                              centre: "Dive Centre",
+                              location: "Location",
+                              price: 150,
+                              rating: 4.8,
+                              reviews: 100,
+                              image: post.image || "",
+                              nextDate: "Coming Soon",
+                              seatsLeft: 5,
+                              badges: ["Popular"],
+                              description: post.description,
+                            };
+                            setSelectedTrip(tripData);
+                            setIsOpen(false);
+                          }}
+                        >
                           <CardContent className="p-0">
                             <div className="flex gap-3">
                               {post.image && (
@@ -195,6 +219,20 @@ const Search = () => {
                         <Card
                           key={product.id}
                           className="min-w-[160px] overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => {
+                            const productData = {
+                              title: product.title,
+                              brand: product.description || "Brand",
+                              price: product.price || 0,
+                              rating: 4.5,
+                              reviews: 100,
+                              image: product.image || "",
+                              badges: ["Popular"],
+                              inStock: true,
+                            };
+                            setSelectedProduct(productData);
+                            setIsOpen(false);
+                          }}
                         >
                           <CardContent className="p-0">
                             {product.image && (
@@ -264,6 +302,22 @@ const Search = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <ProductDetail
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
+
+      {/* Trip Detail Modal */}
+      {selectedTrip && (
+        <TripDetail
+          trip={selectedTrip}
+          onClose={() => setSelectedTrip(null)}
+        />
       )}
     </>
   );

@@ -1,31 +1,31 @@
 import { useState } from "react";
-import { X, Heart, ShoppingCart, Star, TrendingUp, Share2, Minus, Plus } from "lucide-react";
+import { X, Heart, MapPin, Calendar, Users, Star, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface Product {
+interface Trip {
   title: string;
-  brand: string;
+  centre: string;
+  location: string;
   price: number;
   rating: number;
   reviews: number;
   image: string;
+  nextDate: string;
+  seatsLeft: number;
   badges: string[];
-  inStock: boolean;
   description?: string;
-  features?: string[];
 }
 
-interface ProductDetailProps {
-  product: Product;
+interface TripDetailProps {
+  trip: Trip;
   onClose: () => void;
 }
 
-const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
+const TripDetail = ({ trip, onClose }: TripDetailProps) => {
   const [liked, setLiked] = useState(false);
-  const [quantity, setQuantity] = useState(1);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4" style={{ position: 'fixed' }}>
@@ -36,7 +36,7 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
         style={{ position: 'fixed' }}
       />
       
-      {/* Product Detail Card */}
+      {/* Trip Detail Card */}
       <div className="relative w-screen md:w-full md:max-w-2xl h-[95vh] md:max-h-[90vh] overflow-y-auto bg-background rounded-t-3xl md:rounded-3xl animate-in slide-in-from-bottom md:slide-in-from-bottom-0 duration-300" style={{ position: 'relative', zIndex: 1 }}>
         {/* Close Button */}
         <Button
@@ -48,17 +48,17 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
           <X className="w-5 h-5" />
         </Button>
 
-        {/* Product Image with gradient overlay */}
+        {/* Trip Image */}
         <div className="relative h-80 bg-gradient-to-br from-neutral-600 to-violet-300 overflow-hidden">
           <img
-            src={product.image}
-            alt={product.title}
+            src={trip.image}
+            alt={trip.title}
             className="w-full h-full object-cover"
           />
           
-          {/* Floating Action Buttons */}
+          {/* Floating Badges */}
           <div className="absolute top-4 left-4 flex gap-2">
-            {product.badges.map((badge, i) => (
+            {trip.badges.map((badge, i) => (
               <Badge key={i} className="glass-effect backdrop-blur-sm">
                 {badge}
               </Badge>
@@ -74,13 +74,13 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
           </Button>
         </div>
 
-        {/* Product Info Card */}
+        {/* Trip Info Card */}
         <Card className="border-none rounded-t-3xl -mt-6 relative">
           <CardHeader className="pb-4">
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
-                <CardDescription className="text-xs mb-1">{product.brand}</CardDescription>
-                <CardTitle className="text-xl">{product.title}</CardTitle>
+                <CardDescription className="text-xs mb-1">{trip.centre}</CardDescription>
+                <CardTitle className="text-xl">{trip.title}</CardTitle>
               </div>
               <Button size="icon" variant="ghost" className="rounded-full">
                 <Share2 className="w-4 h-4" />
@@ -90,87 +90,70 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
             <div className="flex items-center gap-3 text-sm">
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-accent fill-accent" />
-                <span className="font-semibold">{product.rating}</span>
-                <span className="text-muted-foreground">({product.reviews})</span>
+                <span className="font-semibold">{trip.rating}</span>
+                <span className="text-muted-foreground">({trip.reviews})</span>
               </div>
-              <div className="flex items-center gap-1 text-accent">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-xs">Trending</span>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span className="text-xs">{trip.seatsLeft} seats left</span>
               </div>
             </div>
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <Tabs defaultValue="description" className="w-full">
+            <Tabs defaultValue="details" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="features">Features</TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="info">What's Included</TabsTrigger>
               </TabsList>
-              <TabsContent value="description" className="space-y-2 text-sm">
-                <p className="text-muted-foreground leading-relaxed">
-                  {product.description || "High-quality diving equipment designed for professionals and enthusiasts. Built with premium materials for durability and performance in all underwater conditions."}
+              <TabsContent value="details" className="space-y-3 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="w-4 h-4 text-accent" />
+                  <span>{trip.location}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="w-4 h-4 text-accent" />
+                  <span>Next available: {trip.nextDate}</span>
+                </div>
+                <p className="text-muted-foreground leading-relaxed mt-4">
+                  {trip.description || "Experience an unforgettable underwater adventure with professional guides and top-quality equipment. Perfect for all skill levels."}
                 </p>
               </TabsContent>
-              <TabsContent value="features" className="space-y-2">
+              <TabsContent value="info" className="space-y-2">
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <span className="text-accent mt-0.5">✓</span>
-                    Professional grade materials
+                    All diving equipment provided
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-accent mt-0.5">✓</span>
-                    Tested to 100m depth
+                    Professional dive guide
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-accent mt-0.5">✓</span>
-                    Corrosion resistant
+                    Light refreshments & water
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-accent mt-0.5">✓</span>
-                    2-year warranty included
+                    Insurance coverage included
                   </li>
                 </ul>
               </TabsContent>
             </Tabs>
-
-            {/* Quantity Selector */}
-            <div className="flex items-center justify-between p-4 glass-effect rounded-xl">
-              <span className="text-sm font-medium">Quantity</span>
-              <div className="flex items-center gap-3">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8 rounded-full"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                >
-                  <Minus className="w-3 h-3" />
-                </Button>
-                <span className="font-semibold w-8 text-center">{quantity}</span>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8 rounded-full"
-                  onClick={() => setQuantity(quantity + 1)}
-                >
-                  <Plus className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
           </CardContent>
 
           <CardFooter className="flex-col gap-3 pt-4">
             <div className="flex items-center justify-between w-full">
               <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground uppercase">Total Price</span>
-                <span className="text-3xl font-bold text-accent">${(product.price * quantity).toFixed(2)}</span>
+                <span className="text-xs text-muted-foreground uppercase">Price per person</span>
+                <span className="text-3xl font-bold text-accent">${trip.price}</span>
               </div>
               <Button size="lg" variant="accent" className="gap-2">
-                <ShoppingCart className="w-4 h-4" />
-                Add to Cart
+                Book Now
               </Button>
             </div>
             <Button size="lg" variant="outline" className="w-full">
-              Buy Now
+              Contact Centre
             </Button>
           </CardFooter>
         </Card>
@@ -179,4 +162,4 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
   );
 };
 
-export default ProductDetail;
+export default TripDetail;
