@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AuthGuard from "@/components/AuthGuard";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -51,6 +51,7 @@ const Messages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     checkAuth();
@@ -67,6 +68,16 @@ const Messages = () => {
       fetchMessages(selectedConversation);
     }
   }, [selectedConversation]);
+
+  // Auto-open a conversation when navigated with state or query param
+  useEffect(() => {
+    const state = (location as any)?.state as { conversationId?: string } | undefined;
+    const paramId = new URLSearchParams(window.location.search).get('c');
+    const cid = state?.conversationId || paramId;
+    if (cid && selectedConversation !== cid) {
+      setSelectedConversation(cid);
+    }
+  }, [location]);
 
   const checkAuth = async () => {
     const { data: session } = await supabase.auth.getSession();
