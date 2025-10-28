@@ -69,15 +69,13 @@ const Messages = () => {
     }
   }, [selectedConversation]);
 
-  // Auto-open a conversation when navigated with state or query param
+  // Auto-open a conversation when navigated with state or ?c=
   useEffect(() => {
-    const state = (location as any)?.state as { conversationId?: string } | undefined;
-    const paramId = new URLSearchParams(window.location.search).get('c');
-    const cid = state?.conversationId || paramId;
+    const cid = getConversationIdFromNav();
     if (cid && selectedConversation !== cid) {
       setSelectedConversation(cid);
     }
-  }, [location]);
+  }, [location.search, (location as any)?.state]);
 
   const checkAuth = async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -86,6 +84,12 @@ const Messages = () => {
       return;
     }
     setCurrentUserId(session.session.user.id);
+  };
+
+  const getConversationIdFromNav = () => {
+    const state = (location as any)?.state as { conversationId?: string } | undefined;
+    const params = new URLSearchParams(location.search);
+    return state?.conversationId || params.get('c') || null;
   };
 
   const fetchConversations = async () => {
