@@ -95,24 +95,31 @@ const Messages = () => {
   // If navigated with a target user id (?u=<userId>), create/get the DM then open it
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const targetUserId = params.get('u');
+    const targetUserId = (location as any)?.state?.targetUserId || params.get('u');
     const hasConversationId = params.get('c');
+
+    // Debug logs
+    console.log('[Messages] nav check', { search: location.search, targetUserId, hasConversationId, currentUserId });
 
     if (!currentUserId || !targetUserId || hasConversationId) return;
 
     (async () => {
+      console.log('[Messages] invoking RPC create_or_get_direct_conversation');
       const { data, error } = await supabase.rpc('create_or_get_direct_conversation', {
-        target_user_id: targetUserId,
+        target_user_id: targetUserId as string,
       });
-      if (!error && data) {
+      if (error) {
+        console.error('[Messages] RPC error', error);
+        return;
+      }
+      console.log('[Messages] RPC ok, opening conversation', data);
+      if (data) {
         setSelectedConversation(data as string);
-        // Clean URL to use ?c= and keep state for redundancy
         navigate(`/messages?c=${data}`, { replace: true, state: { conversationId: data } });
-        // Refresh conversations so header/meta populate
         fetchConversations();
       }
     })();
-  }, [currentUserId, location.search]);
+  }, [currentUserId, location.search, (location as any)?.state]);
 
   const fetchConversations = async () => {
     if (!currentUserId) return;
