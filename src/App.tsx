@@ -15,6 +15,8 @@ import Dashboard from "./pages/Dashboard";
 import BuddyFinder from "./pages/BuddyFinder";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import CreatePost from "./pages/CreatePost";
 
 const queryClient = new QueryClient();
 
@@ -42,7 +44,9 @@ const App = () => (
           <Route path="/" element={<MainPages />} />
           <Route path="/explore" element={<MainPages />} />
           <Route path="/shop" element={<MainPages />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/create" element={<AppLayout><Create /></AppLayout>} />
+          <Route path="/create-post" element={<AppLayout><CreatePost /></AppLayout>} />
           <Route path="/logbook" element={<AppLayout><Logbook /></AppLayout>} />
           <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />

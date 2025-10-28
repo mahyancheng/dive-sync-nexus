@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search as SearchIcon, X, User, Map as MapIcon } from "lucide-react";
+import { Search as SearchIcon, X, User, Map as MapIcon, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -286,7 +286,7 @@ const Search = () => {
                                     <User className="w-6 h-6" />
                                   </AvatarFallback>
                                 </Avatar>
-                                <div className="flex-1">
+                                 <div className="flex-1">
                                   <h4 className="font-semibold">{account.title}</h4>
                                   <p className="text-sm text-muted-foreground">
                                     {account.username}
@@ -297,9 +297,14 @@ const Search = () => {
                                     </p>
                                   )}
                                 </div>
-                                <Button size="sm" variant="outline">
-                                  Follow
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline">
+                                    Follow
+                                  </Button>
+                                  <Button size="sm" variant="ghost">
+                                    <MessageCircle className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </CardContent>
                           </Card>

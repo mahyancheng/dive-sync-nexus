@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MessageCircle, Share2, Bookmark, MapPin, Users, Calendar, Gauge, Clock } from "lucide-react";
+import { Heart, MessageCircle, Share2, Bookmark, MapPin, Users, Calendar, Gauge, Clock, Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import DiveLogDetail from "./DiveLogDetail";
@@ -38,9 +38,14 @@ interface FeedPostProps {
     date: string;
     location: string;
   };
+  diveCenter?: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
 }
 
-const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }: FeedPostProps) => {
+const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing, diveCenter }: FeedPostProps) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
@@ -144,6 +149,22 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
                 {/* Expandable Content */}
                 {isDiveLogExpanded && (
                   <div className="px-3 pb-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {diveCenter && (
+                      <div className="flex items-center gap-2 pb-2 border-b border-accent/10">
+                        <Avatar className="w-6 h-6">
+                          <AvatarImage src={diveCenter.avatar} />
+                          <AvatarFallback className="text-xs bg-accent/20">
+                            {diveCenter.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs font-medium flex-1">{diveCenter.name}</span>
+                        <Button size="sm" variant="ghost" className="h-6 px-2 text-xs">
+                          <Send className="w-3 h-3 mr-1" />
+                          Message
+                        </Button>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1">
                         <Gauge className="w-3 h-3 text-coral" />

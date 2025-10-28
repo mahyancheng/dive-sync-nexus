@@ -1,4 +1,4 @@
-import { X, MapPin, Calendar, Anchor, Trophy, Users, Camera } from "lucide-react";
+import { X, MapPin, Calendar, Anchor, Trophy, Users, Camera, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -85,10 +85,15 @@ const ProfileDetail = ({ open, onOpenChange, profile }: ProfileDetailProps) => {
                   </div>
                 )}
               </div>
-              <Button variant="accent" className="mb-2">
-                <Users className="w-4 h-4 mr-2" />
-                Follow
-              </Button>
+              <div className="flex gap-2 mb-2">
+                <Button variant="accent">
+                  <Users className="w-4 h-4 mr-2" />
+                  Follow
+                </Button>
+                <Button variant="outline" size="icon">
+                  <MessageCircle className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
             {profile.bio && (
