@@ -55,21 +55,9 @@ const handleMessage = async () => {
     return;
   }
 
-  try {
-    // Use RPC to create or get a DM conversation
-    const { data: conversationId, error } = await supabase.rpc('create_or_get_direct_conversation', { 
-      target_user_id: otherId 
-    });
-    
-    if (error) throw error;
-    
-    // Navigate to messages with the conversation ID via state and query param
-    navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
-    handleClose();
-  } catch (error) {
-    console.error('Error creating conversation:', error);
-    navigate('/messages');
-  }
+  // Defer conversation creation to Messages page (?u=)
+  navigate(`/messages?u=${otherId}`, { state: { targetUserId: otherId } });
+  handleClose();
 };
 
 if (!open) return null;

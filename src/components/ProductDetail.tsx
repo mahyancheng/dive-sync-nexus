@@ -53,18 +53,9 @@ const ProductDetail = ({ product, onClose }: ProductDetailProps) => {
       return;
     }
 
-    try {
-      const { data: conversationId, error } = await supabase.rpc('create_or_get_direct_conversation', { 
-        target_user_id: product.seller_id 
-      });
-      
-      if (error) throw error;
-      navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
-      handleClose();
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      navigate('/messages');
-    }
+    // Defer conversation creation to Messages page (?u=)
+    navigate(`/messages?u=${product.seller_id}`, { state: { targetUserId: product.seller_id } });
+    handleClose();
   };
 
   return (

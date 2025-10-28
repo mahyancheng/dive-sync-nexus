@@ -53,18 +53,9 @@ const TripDetail = ({ trip, onClose }: TripDetailProps) => {
       return;
     }
 
-    try {
-      const { data: conversationId, error } = await supabase.rpc('create_or_get_direct_conversation', { 
-        target_user_id: trip.dive_center_id 
-      });
-      
-      if (error) throw error;
-      navigate(`/messages?c=${conversationId}`, { state: { conversationId } });
-      handleClose();
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      navigate('/messages');
-    }
+    // Defer conversation creation to Messages page (?u=)
+    navigate(`/messages?u=${trip.dive_center_id}`, { state: { targetUserId: trip.dive_center_id } });
+    handleClose();
   };
 
   return (
