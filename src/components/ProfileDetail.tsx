@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Portal from "./Portal";
 
 interface ProfileDetailProps {
@@ -29,6 +30,7 @@ interface ProfileDetailProps {
 
 const ProfileDetail = ({ open, onOpenChange, profile }: ProfileDetailProps) => {
   const [isClosing, setIsClosing] = useState(false);
+  const navigate = useNavigate();
 
   const handleClose = () => {
     setIsClosing(true);
@@ -36,6 +38,10 @@ const ProfileDetail = ({ open, onOpenChange, profile }: ProfileDetailProps) => {
       onOpenChange(false);
       setIsClosing(false);
     }, 300);
+  };
+
+  const handleMessage = () => {
+    navigate('/messages');
   };
 
   if (!open) return null;
@@ -90,7 +96,7 @@ const ProfileDetail = ({ open, onOpenChange, profile }: ProfileDetailProps) => {
                   <Users className="w-4 h-4 mr-2" />
                   Follow
                 </Button>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" onClick={handleMessage}>
                   <MessageCircle className="w-4 h-4" />
                 </Button>
               </div>

@@ -4,18 +4,66 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Settings, Award, MapPin, Users, TrendingUp } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
+  const [profile, setProfile] = useState<any>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchProfile();
+    fetchPosts();
+  }, []);
+
+  const fetchProfile = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      navigate('/auth');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.session.user.id)
+      .single();
+
+    if (!error && data) {
+      setProfile(data);
+    }
+  };
+
+  const fetchPosts = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) return;
+
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('author_id', session.session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setPosts(data);
+    }
+  };
+
   const stats = [
-    { label: "Dives", value: "127" },
-    { label: "Followers", value: "2.4K" },
-    { label: "Following", value: "385" },
+    { label: "Dives", value: profile?.total_dives || 0 },
+    { label: "Followers", value: "0" },
+    { label: "Following", value: "0" },
   ];
 
-  const posts = [1, 2, 3, 4, 5, 6].map(i => ({
-    id: i,
-    image: `https://images.unsplash.com/photo-${1559827260 + i}-dc66d52bef19?w=400`,
-  }));
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background pt-4 pb-20 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-4 pb-20">
@@ -31,17 +79,19 @@ const Profile = () => {
         {/* Profile Info */}
         <div className="flex flex-col items-center mb-6">
           <Avatar className="w-24 h-24 mb-4 border-4 border-accent/20">
-            <AvatarImage src="" />
+            <AvatarImage src={profile.avatar_url} />
             <AvatarFallback className="bg-accent text-accent-foreground text-2xl">
-              JD
+              {(profile.full_name || profile.username).slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <h2 className="text-xl font-bold mb-1">John Diver</h2>
-          <p className="text-muted-foreground mb-2">Advanced Open Water Diver</p>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <MapPin className="w-4 h-4" />
-            <span>Great Barrier Reef, Australia</span>
-          </div>
+          <h2 className="text-xl font-bold mb-1">{profile.full_name || profile.username}</h2>
+          <p className="text-muted-foreground mb-2">{profile.bio || 'Diver'}</p>
+          {profile.location && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <MapPin className="w-4 h-4" />
+              <span>{profile.location}</span>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="flex items-center gap-8 mb-4">
@@ -64,19 +114,19 @@ const Profile = () => {
         </div>
 
         {/* Certifications */}
-        <Card className="p-4 mb-6 border-accent/20">
-          <div className="flex items-center gap-2 mb-3">
-            <Award className="w-5 h-5 text-accent" />
-            <h3 className="font-semibold">Certifications</h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">Open Water</Badge>
-            <Badge variant="secondary">Advanced Open Water</Badge>
-            <Badge variant="secondary">Rescue Diver</Badge>
-            <Badge variant="secondary">Nitrox</Badge>
-            <Badge variant="secondary">Deep Diver</Badge>
-          </div>
-        </Card>
+        {profile.certifications && profile.certifications.length > 0 && (
+          <Card className="p-4 mb-6 border-accent/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Award className="w-5 h-5 text-accent" />
+              <h3 className="font-semibold">Certifications</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {profile.certifications.map((cert: string, idx: number) => (
+                <Badge key={idx} variant="secondary">{cert}</Badge>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Tabs */}
         <Tabs defaultValue="posts" className="w-full">
@@ -86,20 +136,26 @@ const Profile = () => {
           </TabsList>
 
           <TabsContent value="posts" className="mt-4">
-            <div className="grid grid-cols-3 gap-1">
-              {posts.map((post) => (
-                <div 
-                  key={post.id}
-                  className="aspect-square bg-muted rounded-sm overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <img 
-                    src={post.image} 
-                    alt={`Post ${post.id}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
+            {posts.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1">
+                {posts.map((post) => (
+                  <div 
+                    key={post.id}
+                    className="aspect-square bg-muted rounded-sm overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    <img 
+                      src={post.image_url} 
+                      alt={post.caption || 'Post'}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                No posts yet
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="saved" className="mt-4">

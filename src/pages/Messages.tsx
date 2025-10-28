@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -44,73 +46,126 @@ const Messages = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newChannelName, setNewChannelName] = useState("");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const conversations: Conversation[] = [
-    {
-      id: "1",
-      user: { name: "Sarah Ocean", avatar: "", online: true },
-      lastMessage: "See you at the dive site tomorrow!",
-      timestamp: "2m ago",
-      unreadCount: 2,
-    },
-    {
-      id: "2",
-      user: { name: "Mike Deep", avatar: "", online: false },
-      lastMessage: "Thanks for the gear recommendation",
-      timestamp: "1h ago",
-      unreadCount: 0,
-    },
-    {
-      id: "3",
-      user: { name: "Emma Coral", avatar: "", online: true },
-      lastMessage: "The photos from yesterday were amazing!",
-      timestamp: "3h ago",
-      unreadCount: 1,
-    },
-  ];
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
-  const messages: Message[] = [
-    {
-      id: "1",
-      senderId: "other",
-      text: "Hey! Are you free for a dive this weekend?",
-      timestamp: "10:30 AM",
-      read: true,
-    },
-    {
-      id: "2",
-      senderId: "me",
-      text: "Yes! I was thinking about the reef site we talked about",
-      timestamp: "10:32 AM",
-      read: true,
-    },
-    {
-      id: "3",
-      senderId: "other",
-      text: "Perfect! Should we meet at 8 AM?",
-      timestamp: "10:35 AM",
-      read: true,
-    },
-    {
-      id: "4",
-      senderId: "me",
-      text: "Sounds good. I'll bring my underwater camera",
-      timestamp: "10:36 AM",
-      read: true,
-    },
-    {
-      id: "5",
-      senderId: "other",
-      text: "See you at the dive site tomorrow!",
-      timestamp: "10:38 AM",
-      read: false,
-    },
-  ];
+  useEffect(() => {
+    if (currentUserId) {
+      fetchConversations();
+    }
+  }, [currentUserId]);
 
-  const handleSendMessage = () => {
-    if (messageText.trim()) {
-      // Add message logic here
-      setMessageText("");
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation);
+    }
+  }, [selectedConversation]);
+
+  const checkAuth = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      navigate('/auth');
+      return;
+    }
+    setCurrentUserId(session.session.user.id);
+  };
+
+  const fetchConversations = async () => {
+    if (!currentUserId) return;
+
+    const { data, error } = await supabase
+      .from('conversation_participants')
+      .select(`
+        conversation_id,
+        conversations!inner(
+          id,
+          is_group,
+          name,
+          updated_at
+        )
+      `)
+      .eq('user_id', currentUserId);
+
+    if (!error && data) {
+      // For each conversation, get the other participant
+      const convs = await Promise.all(
+        data.map(async (conv: any) => {
+          const { data: participants } = await supabase
+            .from('conversation_participants')
+            .select('user_id, profiles!inner(username, full_name, avatar_url)')
+            .eq('conversation_id', conv.conversation_id)
+            .neq('user_id', currentUserId);
+
+          // Get last message
+          const { data: lastMsg } = await supabase
+            .from('messages')
+            .select('content, created_at')
+            .eq('conversation_id', conv.conversation_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          const otherUser = participants?.[0]?.profiles;
+          
+          return {
+            id: conv.conversation_id,
+            user: {
+              name: (otherUser as any)?.full_name || (otherUser as any)?.username || 'Unknown',
+              avatar: (otherUser as any)?.avatar_url,
+              online: false,
+            },
+            lastMessage: lastMsg?.content || 'No messages yet',
+            timestamp: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            unreadCount: 0,
+          };
+        })
+      );
+
+      setConversations(convs);
+    }
+  };
+
+  const fetchMessages = async (conversationId: string) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      setMessages(
+        data.map((msg) => ({
+          id: msg.id,
+          senderId: msg.sender_id === currentUserId ? 'me' : 'other',
+          text: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: msg.is_read,
+        }))
+      );
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (messageText.trim() && selectedConversation && currentUserId) {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: selectedConversation,
+          sender_id: currentUserId,
+          content: messageText.trim(),
+        });
+
+      if (!error) {
+        setMessageText("");
+        fetchMessages(selectedConversation);
+        fetchConversations();
+      }
     }
   };
 
@@ -158,10 +213,24 @@ const Messages = () => {
                       </div>
                       <Button 
                         className="w-full" 
-                        onClick={() => {
-                          // Add group creation logic here
-                          setNewGroupName("");
-                          setShowCreateDialog(false);
+                        onClick={async () => {
+                          if (newGroupName.trim() && currentUserId) {
+                            const { data } = await supabase
+                              .from('conversations')
+                              .insert({ name: newGroupName, is_group: true })
+                              .select()
+                              .single();
+
+                            if (data) {
+                              await supabase.from('conversation_participants').insert({
+                                conversation_id: data.id,
+                                user_id: currentUserId,
+                              });
+                              setNewGroupName("");
+                              setShowCreateDialog(false);
+                              fetchConversations();
+                            }
+                          }
                         }}
                       >
                         Create Group
@@ -183,10 +252,24 @@ const Messages = () => {
                       </div>
                       <Button 
                         className="w-full"
-                        onClick={() => {
-                          // Add channel creation logic here
-                          setNewChannelName("");
-                          setShowCreateDialog(false);
+                        onClick={async () => {
+                          if (newChannelName.trim() && currentUserId) {
+                            const { data } = await supabase
+                              .from('conversations')
+                              .insert({ name: newChannelName, is_group: true })
+                              .select()
+                              .single();
+
+                            if (data) {
+                              await supabase.from('conversation_participants').insert({
+                                conversation_id: data.id,
+                                user_id: currentUserId,
+                              });
+                              setNewChannelName("");
+                              setShowCreateDialog(false);
+                              fetchConversations();
+                            }
+                          }
                         }}
                       >
                         Create Channel
@@ -215,41 +298,48 @@ const Messages = () => {
 
           {/* Conversations */}
           <ScrollArea className="flex-1 px-4">
-            <div className="space-y-2 pb-4">
-              {conversations.map((conversation) => (
-                <Card
-                  key={conversation.id}
-                  className="p-4 cursor-pointer hover:bg-accent/5 transition-colors border-accent/20"
-                  onClick={() => setSelectedConversation(conversation.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex-shrink-0">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={conversation.user.avatar} />
-                        <AvatarFallback className="bg-accent text-accent-foreground">
-                          {conversation.user.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      {conversation.user.online && (
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+            {conversations.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No conversations yet</p>
+                <p className="text-sm mt-2">Search for users to start a conversation</p>
+              </div>
+            ) : (
+              <div className="space-y-2 pb-4">
+                {conversations.map((conversation) => (
+                  <Card
+                    key={conversation.id}
+                    className="p-4 cursor-pointer hover:bg-accent/5 transition-colors border-accent/20"
+                    onClick={() => setSelectedConversation(conversation.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-shrink-0">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={conversation.user.avatar} />
+                          <AvatarFallback className="bg-accent text-accent-foreground">
+                            {conversation.user.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {conversation.user.online && (
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <h3 className="font-semibold truncate">{conversation.user.name}</h3>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">{conversation.timestamp}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{conversation.lastMessage}</p>
+                      </div>
+
+                      {conversation.unreadCount > 0 && (
+                        <Badge className="bg-coral text-white flex-shrink-0">{conversation.unreadCount}</Badge>
                       )}
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1 gap-2">
-                        <h3 className="font-semibold truncate">{conversation.user.name}</h3>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">{conversation.timestamp}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">{conversation.lastMessage}</p>
-                    </div>
-
-                    {conversation.unreadCount > 0 && (
-                      <Badge className="bg-coral text-white flex-shrink-0">{conversation.unreadCount}</Badge>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </ScrollArea>
         </div>
       ) : (
@@ -292,25 +382,32 @@ const Messages = () => {
 
           {/* Messages */}
           <ScrollArea className="flex-1 px-4 py-4">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.senderId === "me" ? "justify-end" : "justify-start"}`}
-                >
+            {messages.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No messages yet</p>
+                <p className="text-sm mt-2">Start the conversation!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((message) => (
                   <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                      message.senderId === "me"
-                        ? "bg-accent text-accent-foreground"
-                        : "bg-muted"
-                    }`}
+                    key={message.id}
+                    className={`flex ${message.senderId === "me" ? "justify-end" : "justify-start"}`}
                   >
-                    <p className="text-sm">{message.text}</p>
-                    <p className="text-xs opacity-70 mt-1">{message.timestamp}</p>
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                        message.senderId === "me"
+                          ? "bg-accent text-accent-foreground"
+                          : "bg-muted"
+                      }`}
+                    >
+                      <p className="text-sm">{message.text}</p>
+                      <p className="text-xs opacity-70 mt-1">{message.timestamp}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </ScrollArea>
 
           {/* Message Input */}

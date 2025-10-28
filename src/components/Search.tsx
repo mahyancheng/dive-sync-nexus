@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search as SearchIcon, X, User, Map as MapIcon, MessageCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search as SearchIcon, X, User, Map as MapIcon, MessageCircle, Users as UsersIcon, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductDetail from "@/components/ProductDetail";
 import TripDetail from "@/components/TripDetail";
+import ProfileDetail from "@/components/ProfileDetail";
 import Map from "@/components/Map";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface SearchResult {
   type: "post" | "product" | "account";
@@ -27,64 +30,82 @@ const Search = () => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const navigate = useNavigate();
 
-  // Mock data for demonstration
-  const allData: SearchResult[] = [
-    {
-      type: "post",
-      id: "1",
-      title: "Amazing dive at the Great Barrier Reef",
-      description: "Saw incredible coral formations today!",
-      image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800",
-    },
-    {
-      type: "post",
-      id: "2",
-      title: "Underwater photography tips",
-      description: "Here's how I capture stunning underwater shots",
-      image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800",
-    },
-    {
-      type: "product",
-      id: "1",
-      title: "Professional Dive Computer",
-      description: "Suunto",
-      price: 599,
-      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800",
-    },
-    {
-      type: "product",
-      id: "2",
-      title: "Premium Wetsuit 5mm",
-      description: "Scubapro",
-      price: 329,
-      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800",
-    },
-    {
-      type: "product",
-      id: "3",
-      title: "Underwater Camera",
-      description: "GoPro",
-      price: 449,
-      image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800",
-    },
-    {
-      type: "account",
-      id: "1",
-      title: "DiveMaster Pro",
-      username: "@divemaster_pro",
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100",
-      description: "Professional diving instructor",
-    },
-    {
-      type: "account",
-      id: "2",
-      title: "Ocean Explorer",
-      username: "@ocean_explorer",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
-      description: "Underwater photographer",
-    },
-  ];
+  useEffect(() => {
+    if (isOpen) {
+      fetchUsers();
+      fetchPosts();
+    }
+  }, [isOpen]);
+
+  const fetchUsers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .limit(20);
+    
+    if (!error && data) {
+      setUsers(data);
+    }
+  };
+
+  const fetchPosts = async () => {
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*, profiles!inner(username, full_name, avatar_url)')
+      .limit(20);
+    
+    if (!error && data) {
+      setPosts(data);
+    }
+  };
+
+  const handleMessageUser = async (userId: string) => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      navigate('/auth');
+      return;
+    }
+
+    // Check if conversation already exists
+    const { data: existingConv } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', session.session.user.id);
+
+    if (existingConv && existingConv.length > 0) {
+      const { data: otherParticipants } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .in('conversation_id', existingConv.map(c => c.conversation_id));
+
+      if (otherParticipants && otherParticipants.length > 0) {
+        navigate('/messages');
+        return;
+      }
+    }
+
+    // Create new conversation
+    const { data: newConv } = await supabase
+      .from('conversations')
+      .insert({ is_group: false })
+      .select()
+      .single();
+
+    if (newConv) {
+      await supabase.from('conversation_participants').insert([
+        { conversation_id: newConv.id, user_id: session.session.user.id },
+        { conversation_id: newConv.id, user_id: userId }
+      ]);
+      
+      navigate('/messages');
+    }
+  };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -93,17 +114,48 @@ const Search = () => {
       return;
     }
 
-    const filtered = allData.filter((item) =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
-      item.description?.toLowerCase().includes(query.toLowerCase()) ||
-      item.username?.toLowerCase().includes(query.toLowerCase())
-    );
+    const filtered: SearchResult[] = [];
+
+    // Search posts
+    posts.forEach(post => {
+      if (
+        post.caption?.toLowerCase().includes(query.toLowerCase()) ||
+        (post.profiles as any)?.username?.toLowerCase().includes(query.toLowerCase())
+      ) {
+        filtered.push({
+          type: "post",
+          id: post.id,
+          title: post.caption || "Dive post",
+          description: (post.profiles as any)?.username || "",
+          image: post.image_url,
+        });
+      }
+    });
+
+    // Search users
+    users.forEach(user => {
+      if (
+        user.username?.toLowerCase().includes(query.toLowerCase()) ||
+        user.full_name?.toLowerCase().includes(query.toLowerCase()) ||
+        user.bio?.toLowerCase().includes(query.toLowerCase())
+      ) {
+        filtered.push({
+          type: "account",
+          id: user.id,
+          title: user.full_name || user.username,
+          username: `@${user.username}`,
+          avatar: user.avatar_url,
+          description: user.bio || "Diver",
+        });
+      }
+    });
+
     setResults(filtered);
   };
 
-  const posts = results.filter((r) => r.type === "post");
-  const products = results.filter((r) => r.type === "product");
-  const accounts = results.filter((r) => r.type === "account");
+  const searchPosts = results.filter((r) => r.type === "post");
+  const searchProducts = results.filter((r) => r.type === "product");
+  const searchAccounts = results.filter((r) => r.type === "account");
 
   return (
     <>
@@ -148,7 +200,7 @@ const Search = () => {
             </div>
           </div>
 
-          {/* Search Results or Map */}
+          {/* Search Results */}
           <div className="flex-1 overflow-y-auto p-4">
             {searchQuery === "" ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
@@ -172,18 +224,18 @@ const Search = () => {
 
                 <TabsContent value="results" className="mt-0 space-y-6">
                   {/* Posts Section */}
-                  {posts.length > 0 && (
+                  {searchPosts.length > 0 && (
                     <div>
                       <h3 className="text-lg font-semibold mb-3">Posts</h3>
                       <div className="space-y-3">
-                        {posts.map((post) => (
+                        {searchPosts.map((post) => (
                           <Card 
                             key={post.id} 
                             className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
                             onClick={() => {
                               const tripData = {
                                 title: post.title,
-                                centre: "Dive Centre",
+                                centre: post.description,
                                 location: "Location",
                                 price: 150,
                                 rating: 4.8,
@@ -192,7 +244,7 @@ const Search = () => {
                                 nextDate: "Coming Soon",
                                 seatsLeft: 5,
                                 badges: ["Popular"],
-                                description: post.description,
+                                description: post.title,
                               };
                               setSelectedTrip(tripData);
                             }}
@@ -209,60 +261,9 @@ const Search = () => {
                                 <div className="flex-1 p-3">
                                   <h4 className="font-semibold mb-1">{post.title}</h4>
                                   <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {post.description}
+                                    By {post.description}
                                   </p>
                                 </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Products Section (Carousel) */}
-                  {products.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Products</h3>
-                      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-                        {products.map((product) => (
-                          <Card
-                            key={product.id}
-                            className="min-w-[160px] overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-                            onClick={() => {
-                              const productData = {
-                                title: product.title,
-                                brand: product.description || "Brand",
-                                price: product.price || 0,
-                                rating: 4.5,
-                                reviews: 100,
-                                image: product.image || "",
-                                badges: ["Popular"],
-                                inStock: true,
-                              };
-                              setSelectedProduct(productData);
-                            }}
-                          >
-                            <CardContent className="p-0">
-                              {product.image && (
-                                <img
-                                  src={product.image}
-                                  alt={product.title}
-                                  className="w-full h-32 object-cover"
-                                />
-                              )}
-                              <div className="p-3">
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  {product.description}
-                                </p>
-                                <h4 className="font-semibold text-sm line-clamp-2 mb-2">
-                                  {product.title}
-                                </h4>
-                                {product.price && (
-                                  <p className="text-accent font-bold">
-                                    ${product.price}
-                                  </p>
-                                )}
                               </div>
                             </CardContent>
                           </Card>
@@ -272,43 +273,83 @@ const Search = () => {
                   )}
 
                   {/* Accounts Section */}
-                  {accounts.length > 0 && (
+                  {searchAccounts.length > 0 && (
                     <div>
                       <h3 className="text-lg font-semibold mb-3">Accounts</h3>
                       <div className="space-y-3">
-                        {accounts.map((account) => (
-                          <Card key={account.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="w-12 h-12">
-                                  <AvatarImage src={account.avatar} />
-                                  <AvatarFallback>
-                                    <User className="w-6 h-6" />
-                                  </AvatarFallback>
-                                </Avatar>
-                                 <div className="flex-1">
-                                  <h4 className="font-semibold">{account.title}</h4>
-                                  <p className="text-sm text-muted-foreground">
-                                    {account.username}
-                                  </p>
-                                  {account.description && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {account.description}
+                        {searchAccounts.map((account) => {
+                          const user = users.find(u => u.id === account.id);
+                          return (
+                            <Card 
+                              key={account.id} 
+                              className="cursor-pointer hover:shadow-lg transition-shadow"
+                              onClick={() => {
+                                if (user) {
+                                  setSelectedProfile({
+                                    name: user.full_name || user.username,
+                                    avatar: user.avatar_url,
+                                    role: user.bio || 'Diver',
+                                    location: user.location,
+                                    bio: user.bio,
+                                    totalDives: user.total_dives,
+                                    certifications: user.certifications,
+                                    joinedDate: new Date(user.joined_date).toLocaleDateString(),
+                                  });
+                                }
+                              }}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="w-12 h-12">
+                                    <AvatarImage src={account.avatar} />
+                                    <AvatarFallback className="bg-accent text-accent-foreground">
+                                      {account.title.slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold truncate">{account.title}</h4>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {account.username}
                                     </p>
-                                  )}
+                                    {account.description && (
+                                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                                        {account.description}
+                                      </p>
+                                    )}
+                                    {user?.location && (
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                        <MapPin className="w-3 h-3" />
+                                        <span className="truncate">{user.location}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2 flex-shrink-0">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                    >
+                                      <UsersIcon className="w-4 h-4 mr-1" />
+                                      Follow
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMessageUser(account.id);
+                                      }}
+                                    >
+                                      <MessageCircle className="w-4 h-4" />
+                                    </Button>
+                                  </div>
                                 </div>
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="outline">
-                                    Follow
-                                  </Button>
-                                  <Button size="sm" variant="ghost">
-                                    <MessageCircle className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -317,7 +358,7 @@ const Search = () => {
                 <TabsContent value="map" className="mt-0">
                   <div className="h-[500px] w-full">
                     <Map 
-                      divePoints={posts.map(post => ({
+                      divePoints={searchPosts.map(post => ({
                         id: post.id,
                         name: post.title,
                         coordinates: [-16.9186, 145.7781] as [number, number],
@@ -333,7 +374,7 @@ const Search = () => {
         </div>
       )}
 
-      {/* Product Detail Modal */}
+      {/* Modals */}
       {selectedProduct && (
         <ProductDetail
           product={selectedProduct}
@@ -341,11 +382,18 @@ const Search = () => {
         />
       )}
 
-      {/* Trip Detail Modal */}
       {selectedTrip && (
         <TripDetail
           trip={selectedTrip}
           onClose={() => setSelectedTrip(null)}
+        />
+      )}
+
+      {selectedProfile && (
+        <ProfileDetail
+          open={!!selectedProfile}
+          onOpenChange={(open) => !open && setSelectedProfile(null)}
+          profile={selectedProfile}
         />
       )}
     </>
