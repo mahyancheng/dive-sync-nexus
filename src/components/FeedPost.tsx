@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, MessageCircle, Share2, Bookmark, MapPin, Users, Calendar, Gauge, Clock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
+import DiveLogDetail from "./DiveLogDetail";
 
 interface DiveLog {
   site: string;
@@ -10,6 +11,12 @@ interface DiveLog {
   duration: string;
   visibility: string;
   notes: string;
+  temperature?: string;
+  coordinates?: { lat: number; lng: number };
+  airConsumption?: string;
+  avgDepth?: string;
+  buddies?: Array<{ name: string; avatar?: string }>;
+  media?: Array<{ url: string; type: 'image' | 'video' }>;
 }
 
 interface FeedPostProps {
@@ -36,6 +43,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
+  const [showDiveDetail, setShowDiveDetail] = useState(false);
 
   return (
     <div className="relative h-screen w-full snap-start snap-always">
@@ -52,31 +60,31 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
       {/* Content Overlay */}
       <div className="relative h-full flex flex-col justify-between p-4 pb-20">
         {/* Top - Author Info */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-w-[70%]">
           <Avatar className="border-2 border-white/20">
             <AvatarImage src={author.avatar} />
             <AvatarFallback className="bg-accent text-accent-foreground">
               {author.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <p className="font-semibold text-white drop-shadow-lg">{author.name}</p>
-            <p className="text-sm text-white/80 drop-shadow-lg">{author.role}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-white drop-shadow-lg truncate">{author.name}</p>
+            <p className="text-sm text-white/80 drop-shadow-lg truncate">{author.role}</p>
           </div>
           {listing && (
-            <Badge variant="secondary" className="bg-coral/90 text-white border-coral/20 backdrop-blur-sm">
+            <Badge variant="secondary" className="bg-coral/90 text-white border-coral/20 backdrop-blur-sm shrink-0">
               Bookable
             </Badge>
           )}
         </div>
 
-        {/* Bottom - Caption, Dive Logs & Shoppable Tag */}
-        <div className="space-y-4">
-          {/* Caption */}
-          <div className="max-w-xs">
-            <p className="text-white drop-shadow-lg">
+        {/* Bottom - Caption (compact), Dive Logs & Shoppable Tag */}
+        <div className="space-y-3 max-w-[85%]">
+          {/* Caption - compact */}
+          <div>
+            <p className="text-white drop-shadow-lg text-sm line-clamp-2">
               <span className="font-semibold">{author.name}</span>{" "}
-              <span className="text-sm">{caption}</span>
+              {caption}
             </p>
           </div>
 
@@ -85,14 +93,14 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
             <div className="space-y-2">
               {/* Navigation Dots */}
               {diveLogs.length > 1 && (
-                <div className="flex items-center gap-2 justify-center">
+                <div className="flex items-center gap-2">
                   {diveLogs.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentLogIndex(index)}
-                      className={`w-2 h-2 rounded-full transition-all ${
+                      className={`w-1.5 h-1.5 rounded-full transition-all ${
                         index === currentLogIndex 
-                          ? 'bg-white w-6' 
+                          ? 'bg-white w-4' 
                           : 'bg-white/40'
                       }`}
                     />
@@ -100,11 +108,14 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
                 </div>
               )}
 
-              {/* Current Dive Log */}
-              <div className="bg-card/95 backdrop-blur-md rounded-2xl p-4 border border-accent/20 shadow-glow max-w-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <MapPin className="w-4 h-4 text-accent" />
-                  <h4 className="font-semibold text-foreground">{diveLogs[currentLogIndex].site}</h4>
+              {/* Current Dive Log - Clickable */}
+              <button
+                onClick={() => setShowDiveDetail(true)}
+                className="bg-card/95 backdrop-blur-md rounded-xl p-3 border border-accent/20 shadow-glow text-left w-full hover:bg-card transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="w-3.5 h-3.5 text-accent" />
+                  <h4 className="font-semibold text-foreground text-sm">{diveLogs[currentLogIndex].site}</h4>
                   {diveLogs.length > 1 && (
                     <Badge variant="secondary" className="ml-auto text-xs">
                       {currentLogIndex + 1}/{diveLogs.length}
@@ -112,7 +123,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
                   )}
                 </div>
                 
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="flex items-center gap-1">
                     <Gauge className="w-3 h-3 text-coral" />
                     <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].maxDepth}</span>
@@ -121,22 +132,16 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
                     <Clock className="w-3 h-3 text-accent" />
                     <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].duration}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Vis: {diveLogs[currentLogIndex].visibility}
-                  </div>
+                  {diveLogs[currentLogIndex].buddies && (
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3 h-3 text-primary" />
+                      <span className="text-xs text-muted-foreground">{diveLogs[currentLogIndex].buddies.length}</span>
+                    </div>
+                  )}
                 </div>
 
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {diveLogs[currentLogIndex].notes}
-                </p>
-
-                {/* Swipe hint */}
-                {diveLogs.length > 1 && (
-                  <div className="flex items-center gap-2 justify-center mt-3 pt-3 border-t border-border">
-                    <span className="text-xs text-muted-foreground">Tap dots to view other dives</span>
-                  </div>
-                )}
-              </div>
+                <p className="text-xs text-accent">Tap for details →</p>
+              </button>
             </div>
           )}
 
@@ -210,6 +215,17 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
           </div>
         </button>
       </div>
+
+      {/* Dive Log Detail Sheet */}
+      {diveLogs && diveLogs.length > 0 && (
+        <DiveLogDetail
+          open={showDiveDetail}
+          onOpenChange={setShowDiveDetail}
+          diveLog={diveLogs[currentLogIndex]}
+          diveNumber={currentLogIndex + 1}
+          totalDives={diveLogs.length}
+        />
+      )}
     </div>
   );
 };

@@ -14,23 +14,54 @@ const Feed = () => {
         {
           site: "Blue Corner Wall",
           maxDepth: "28m",
+          avgDepth: "18m",
           duration: "45 min",
           visibility: "25m",
-          notes: "Strong current, saw manta rays and gray reef sharks"
+          temperature: "24°C",
+          airConsumption: "180 bar",
+          coordinates: { lat: -8.0891, lng: 134.2167 },
+          notes: "Strong current, saw manta rays and gray reef sharks",
+          buddies: [
+            { name: "Mike Deep", avatar: "" },
+            { name: "Alex Waters", avatar: "" }
+          ],
+          media: [
+            { url: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400", type: 'image' as const },
+            { url: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400", type: 'image' as const }
+          ]
         },
         {
           site: "SS Yongala Wreck",
           maxDepth: "18m",
+          avgDepth: "14m",
           duration: "52 min",
           visibility: "20m",
-          notes: "Historic wreck covered in soft corals, spotted sea snakes"
+          temperature: "26°C",
+          airConsumption: "160 bar",
+          coordinates: { lat: -19.3167, lng: 147.6167 },
+          notes: "Historic wreck covered in soft corals, spotted sea snakes",
+          buddies: [
+            { name: "Sarah Ocean", avatar: "" }
+          ],
+          media: [
+            { url: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400", type: 'image' as const }
+          ]
         },
         {
           site: "Cod Hole",
           maxDepth: "15m",
+          avgDepth: "12m",
           duration: "48 min",
           visibility: "30m",
-          notes: "Friendly potato cods and moray eels everywhere"
+          temperature: "25°C",
+          airConsumption: "140 bar",
+          coordinates: { lat: -14.4167, lng: 145.6167 },
+          notes: "Friendly potato cods and moray eels everywhere",
+          buddies: [
+            { name: "Mike Deep", avatar: "" },
+            { name: "Jordan Reef", avatar: "" },
+            { name: "Taylor Blue", avatar: "" }
+          ]
         }
       ],
       listing: {
@@ -51,9 +82,21 @@ const Feed = () => {
         {
           site: "USS Liberty Wreck",
           maxDepth: "22m",
+          avgDepth: "16m",
           duration: "50 min",
           visibility: "18m",
-          notes: "Incredible coral growth on the wreck, schools of bumphead parrotfish"
+          temperature: "27°C",
+          airConsumption: "170 bar",
+          coordinates: { lat: -8.2765, lng: 115.5937 },
+          notes: "Incredible coral growth on the wreck, schools of bumphead parrotfish",
+          buddies: [
+            { name: "Emma Coral", avatar: "" }
+          ],
+          media: [
+            { url: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400", type: 'image' as const },
+            { url: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400", type: 'image' as const },
+            { url: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400", type: 'image' as const }
+          ]
         }
       ],
     },
