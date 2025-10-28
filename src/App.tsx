@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import BottomNav from "./components/BottomNav";
 import Feed from "./pages/Feed";
 import Explore from "./pages/Explore";
+import Shop from "./pages/Shop";
 import Create from "./pages/Create";
 import Logbook from "./pages/Logbook";
 import Profile from "./pages/Profile";
@@ -30,6 +31,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<AppLayout><Feed /></AppLayout>} />
           <Route path="/explore" element={<AppLayout><Explore /></AppLayout>} />
+          <Route path="/shop" element={<AppLayout><Shop /></AppLayout>} />
           <Route path="/create" element={<AppLayout><Create /></AppLayout>} />
           <Route path="/logbook" element={<AppLayout><Logbook /></AppLayout>} />
           <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />

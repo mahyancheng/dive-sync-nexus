@@ -140,4 +140,72 @@ All colors MUST be HSL.
   .bento-card:hover::before {
     opacity: 1;
   }
+
+  /* Navigation Switcher Styles */
+  .nav-switcher {
+    all: unset;
+    position: relative;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.375rem;
+    background: hsl(var(--background) / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .nav-switcher__option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .nav-switcher__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .nav-switcher__label {
+    position: relative;
+    z-index: 2;
+    padding: 0.5rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .nav-switcher__input:checked + .nav-switcher__label {
+    color: hsl(var(--foreground));
+  }
+
+  .nav-switcher__option::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: hsl(var(--accent) / 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 0.75rem;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .nav-switcher__input:checked ~ .nav-switcher__option::before,
+  .nav-switcher__option:has(.nav-switcher__input:checked)::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .nav-switcher__option:hover .nav-switcher__label {
+    color: hsl(var(--foreground));
+  }
 }

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Users, Calendar, Star } from "lucide-react";
+import { NavSwitcher } from "@/components/ui/nav-switcher";
 
 const Explore = () => {
   const listings = [
@@ -58,7 +59,12 @@ const Explore = () => {
 
   return (
     <div className="min-h-screen bg-background pt-4 pb-20">
-      <div className="container mx-auto px-4 max-w-7xl">
+      {/* Top Navigation */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <NavSwitcher defaultValue="explore" />
+      </div>
+      
+      <div className="container mx-auto px-4 max-w-7xl pt-16">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Explore Dive Trips</h1>

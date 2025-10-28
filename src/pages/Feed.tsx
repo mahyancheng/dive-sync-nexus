@@ -1,5 +1,6 @@
 import { useState } from "react";
 import FeedPost from "@/components/FeedPost";
+import { NavSwitcher } from "@/components/ui/nav-switcher";
 
 const Feed = () => {
   // Mock data - TikTok style full-screen posts
@@ -117,7 +118,12 @@ const Feed = () => {
   ];
 
   return (
-    <div className="h-screen w-full overflow-y-scroll snap-y snap-mandatory bg-black">
+    <div className="h-screen w-full overflow-y-scroll snap-y snap-mandatory bg-black relative">
+      {/* Top Navigation */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <NavSwitcher defaultValue="following" />
+      </div>
+      
       {posts.map((post, index) => (
         <FeedPost key={index} {...post} />
       ))}
