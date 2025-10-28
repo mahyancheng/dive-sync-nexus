@@ -60,7 +60,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
       {/* Content Overlay */}
       <div className="relative h-full flex flex-col justify-between p-4 pb-20">
         {/* Top - Author Info */}
-        <div className="flex items-center gap-3 max-w-[70%]">
+        <div className="flex items-center gap-3 max-w-[70%] glass-effect rounded-xl p-3">
           <Avatar className="border-2 border-white/20">
             <AvatarImage src={author.avatar} />
             <AvatarFallback className="bg-accent text-accent-foreground">
@@ -111,7 +111,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
               {/* Current Dive Log - Clickable */}
               <button
                 onClick={() => setShowDiveDetail(true)}
-                className="bg-card/95 backdrop-blur-md rounded-xl p-3 border border-accent/20 shadow-glow text-left w-full hover:bg-card transition-colors"
+                className="glass-effect rounded-xl p-3 border border-accent/20 shadow-glow text-left w-full glass-hover"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="w-3.5 h-3.5 text-accent" />
@@ -147,7 +147,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing }
 
           {/* Shoppable Tag */}
           {listing && (
-            <div className="bg-card/95 backdrop-blur-md rounded-2xl p-4 border border-accent/20 shadow-glow">
+            <div className="glass-effect rounded-2xl p-4 border border-accent/20 shadow-glow glass-hover">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-foreground text-base mb-2">{listing.title}</h4>

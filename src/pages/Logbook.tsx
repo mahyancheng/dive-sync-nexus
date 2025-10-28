@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Gauge, Clock, Plus, TrendingUp, Award } from "lucide-react";
+import DiveLogDetail from "@/components/DiveLogDetail";
 
 const Logbook = () => {
+  const [selectedDive, setSelectedDive] = useState<any>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const stats = [
     { label: "Total Dives", value: "127", icon: TrendingUp, color: "text-accent" },
     { label: "Max Depth", value: "42m", icon: Gauge, color: "text-coral" },
@@ -16,31 +20,59 @@ const Logbook = () => {
       date: "Nov 10, 2025",
       site: "Blue Corner Wall",
       location: "Palau",
-      depth: "28m",
-      time: "45 min",
+      maxDepth: "28m",
+      avgDepth: "22m",
+      duration: "45 min",
       visibility: "25m",
       conditions: "Excellent",
       notes: "Strong current, saw manta rays and gray reef sharks",
+      temperature: "28°C",
+      airConsumption: "180 bar",
+      coordinates: { lat: 7.2413, lng: 134.2192 },
+      buddies: [
+        { name: "Sarah Chen", avatar: "" },
+        { name: "Mike Torres", avatar: "" }
+      ],
+      media: [
+        { url: "", type: 'image' as const },
+        { url: "", type: 'image' as const }
+      ]
     },
     {
       date: "Nov 8, 2025",
       site: "SS Yongala Wreck",
       location: "Great Barrier Reef",
-      depth: "18m",
-      time: "52 min",
+      maxDepth: "18m",
+      avgDepth: "15m",
+      duration: "52 min",
       visibility: "20m",
       conditions: "Good",
       notes: "Historic wreck covered in soft corals, spotted sea snakes",
+      temperature: "26°C",
+      airConsumption: "160 bar",
+      coordinates: { lat: -19.3086, lng: 147.6364 },
+      buddies: [
+        { name: "Alex Kim", avatar: "" }
+      ],
+      media: [
+        { url: "", type: 'image' as const }
+      ]
     },
     {
       date: "Nov 5, 2025",
       site: "The Cathedral",
       location: "Phi Phi Islands",
-      depth: "22m",
-      time: "38 min",
+      maxDepth: "22m",
+      avgDepth: "18m",
+      duration: "38 min",
       visibility: "18m",
       conditions: "Good",
       notes: "Beautiful swim-throughs and caverns with good light penetration",
+      temperature: "29°C",
+      airConsumption: "140 bar",
+      coordinates: { lat: 7.7407, lng: 98.7784 },
+      buddies: [],
+      media: []
     },
   ];
 
@@ -62,7 +94,7 @@ const Logbook = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, index) => (
-            <Card key={index} className="p-6 border-accent/20 shadow-ocean hover:shadow-glow transition-all">
+            <Card key={index} className="p-6 glass-effect bento-card glass-hover">
               <div className="flex items-center justify-between mb-2">
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
                 <Badge variant="secondary" className="text-xs">{stat.label}</Badge>
@@ -77,9 +109,15 @@ const Logbook = () => {
           <h2 className="text-2xl font-bold mb-4">Recent Dives</h2>
           <div className="space-y-4">
             {recentDives.map((dive, index) => (
-              <Card key={index} className="p-6 border-accent/20 hover:shadow-ocean transition-all cursor-pointer">
+              <Card 
+                key={index} 
+                className="p-6 glass-effect bento-card glass-hover cursor-pointer"
+                onClick={() => {
+                  setSelectedDive(dive);
+                  setIsDetailOpen(true);
+                }}
+              >
                 <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-                  {/* Main Info */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-3">
                       <div>
@@ -100,18 +138,17 @@ const Logbook = () => {
                       </Badge>
                     </div>
 
-                    {/* Stats */}
                     <div className="flex flex-wrap gap-4 mb-3">
                       <div className="flex items-center gap-2">
                         <Gauge className="w-4 h-4 text-coral" />
                         <span className="text-sm">
-                          <span className="font-semibold">Depth:</span> {dive.depth}
+                          <span className="font-semibold">Depth:</span> {dive.maxDepth}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-accent" />
                         <span className="text-sm">
-                          <span className="font-semibold">Time:</span> {dive.time}
+                          <span className="font-semibold">Time:</span> {dive.duration}
                         </span>
                       </div>
                       <div className="text-sm">
@@ -119,8 +156,7 @@ const Logbook = () => {
                       </div>
                     </div>
 
-                    {/* Notes */}
-                    <p className="text-sm text-muted-foreground">{dive.notes}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{dive.notes}</p>
                   </div>
                 </div>
               </Card>
@@ -128,6 +164,16 @@ const Logbook = () => {
           </div>
         </div>
       </div>
+
+      {selectedDive && (
+        <DiveLogDetail
+          open={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
+          diveLog={selectedDive}
+          diveNumber={recentDives.findIndex(d => d.site === selectedDive.site) + 1}
+          totalDives={127}
+        />
+      )}
     </div>
   );
 };

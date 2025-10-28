@@ -8,59 +8,6 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 200 20% 98%;
-    --foreground: 200 50% 10%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 200 50% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 200 50% 10%;
-
-    --primary: 200 100% 18%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 200 100% 37%;
-
-    --secondary: 200 30% 92%;
-    --secondary-foreground: 200 50% 10%;
-
-    --muted: 200 20% 95%;
-    --muted-foreground: 200 20% 40%;
-
-    --accent: 181 100% 41%;
-    --accent-foreground: 0 0% 100%;
-    --accent-glow: 160 100% 75%;
-
-    --coral: 0 100% 71%;
-    --coral-foreground: 0 0% 100%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 200 20% 88%;
-    --input: 200 20% 88%;
-    --ring: 200 100% 18%;
-
-    --radius: 0.75rem;
-
-    --gradient-ocean: linear-gradient(180deg, hsl(200, 100%, 25%), hsl(200, 100%, 15%));
-    --gradient-surface: linear-gradient(180deg, hsl(181, 100%, 85%), hsl(181, 100%, 70%));
-    --gradient-depth: linear-gradient(180deg, hsl(200, 100%, 18%), hsl(210, 100%, 8%));
-    
-    --shadow-ocean: 0 20px 60px -15px hsl(200 100% 18% / 0.4);
-    --shadow-glow: 0 0 40px hsl(181 100% 41% / 0.3);
-
-    --sidebar-background: 200 30% 96%;
-    --sidebar-foreground: 200 50% 10%;
-    --sidebar-primary: 200 100% 18%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 200 30% 92%;
-    --sidebar-accent-foreground: 200 50% 10%;
-    --sidebar-border: 200 20% 88%;
-    --sidebar-ring: 181 100% 41%;
-  }
-
-  .dark {
     --background: 200 50% 5%;
     --foreground: 200 20% 95%;
 
@@ -93,6 +40,8 @@ All colors MUST be HSL.
     --border: 200 40% 15%;
     --input: 200 40% 15%;
     --ring: 181 100% 41%;
+
+    --radius: 1rem;
 
     --gradient-ocean: linear-gradient(180deg, hsl(200, 50%, 10%), hsl(200, 50%, 5%));
     --gradient-surface: linear-gradient(180deg, hsl(181, 100%, 41%), hsl(200, 100%, 18%));
@@ -149,5 +98,46 @@ All colors MUST be HSL.
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
     background-size: 1000px 100%;
     animation: shimmer 3s infinite;
+  }
+
+  /* Liquid Glass Effects */
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-hover {
+    transition: all 0.3s ease;
+  }
+
+  .glass-hover:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-2px);
+  }
+
+  /* Bento Card Styles */
+  .bento-card {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bento-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(181, 255, 255, 0.1) 0%, rgba(0, 200, 255, 0.05) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .bento-card:hover::before {
+    opacity: 1;
   }
 }
