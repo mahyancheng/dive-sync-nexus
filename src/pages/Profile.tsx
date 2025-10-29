@@ -2,16 +2,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Award, MapPin, Users, TrendingUp } from "lucide-react";
+import { Settings, Award, MapPin, Users, TrendingUp, Plus } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import AuthGuard from "@/components/AuthGuard";
+import PostDetail from "@/components/PostDetail";
 
 const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -108,12 +110,22 @@ const Profile = () => {
             ))}
           </div>
 
-          <div className="flex gap-2 w-full max-w-sm">
-            <Button variant="accent" className="flex-1">
-              Edit Profile
-            </Button>
-            <Button variant="outline" className="flex-1">
-              Share Profile
+          <div className="flex flex-col gap-2 w-full max-w-sm">
+            <div className="flex gap-2">
+              <Button variant="accent" className="flex-1">
+                Edit Profile
+              </Button>
+              <Button variant="outline" className="flex-1">
+                Share Profile
+              </Button>
+            </div>
+            <Button 
+              variant="default" 
+              className="w-full"
+              onClick={() => navigate('/create-post')}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Post
             </Button>
           </div>
         </div>
@@ -148,6 +160,7 @@ const Profile = () => {
                   <div 
                     key={post.id}
                     className="aspect-square bg-muted rounded-sm overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setSelectedPostId(post.id)}
                   >
                     <img 
                       src={post.image_url} 
@@ -194,6 +207,13 @@ const Profile = () => {
         </Tabs>
       </div>
     </div>
+
+    {selectedPostId && (
+      <PostDetail 
+        postId={selectedPostId}
+        onClose={() => setSelectedPostId(null)}
+      />
+    )}
     </AuthGuard>
   );
 };
