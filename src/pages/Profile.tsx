@@ -78,68 +78,59 @@ const Profile = () => {
     <AuthGuard>
       <div className="min-h-screen bg-background pt-4 pb-20">
         <div className="container mx-auto px-4 max-w-2xl">
-        {/* Header - Removed since settings moved to profile section */}
-        <div className="mb-4" />
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Profile</h1>
+          <Button variant="ghost" size="icon">
+            <Settings className="w-5 h-5" />
+          </Button>
+        </div>
 
-        {/* Profile Info - Instagram Style */}
-        <div className="flex gap-6 mb-6">
-          {/* Avatar */}
-          <Avatar className="w-20 h-20 md:w-24 md:h-24 shrink-0 border-4 border-accent/20">
+        {/* Profile Info */}
+        <div className="flex flex-col items-center mb-6">
+          <Avatar className="w-24 h-24 mb-4 border-4 border-accent/20">
             <AvatarImage src={profile.avatar_url} />
             <AvatarFallback className="bg-accent text-accent-foreground text-2xl">
               {(profile.full_name || profile.username).slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-
-          {/* Stats and Info */}
-          <div className="flex-1 min-w-0">
-            {/* Username and Settings */}
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-xl font-semibold">{profile.username}</h2>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Stats Row */}
-            <div className="flex items-center gap-6 mb-4">
-              {stats.map((stat) => (
-                <div key={stat.label} className="flex items-center gap-1">
-                  <span className="font-semibold">{stat.value}</span>
-                  <span className="text-sm text-muted-foreground">{stat.label.toLowerCase()}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2 mb-4">
-              <Button variant="secondary" size="sm" className="flex-1">
-                Edit Profile
-              </Button>
-              <Button variant="secondary" size="sm" className="flex-1">
-                Share Profile
-              </Button>
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={() => navigate('/create-post')}
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Bio Section */}
-        <div className="mb-6">
-          <p className="font-semibold mb-1">{profile.full_name}</p>
-          {profile.bio && <p className="text-sm mb-2">{profile.bio}</p>}
+          <h2 className="text-xl font-bold mb-1">{profile.full_name || profile.username}</h2>
+          <p className="text-muted-foreground mb-2">{profile.bio || 'Diver'}</p>
           {profile.location && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="w-3 h-3" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <MapPin className="w-4 h-4" />
               <span>{profile.location}</span>
             </div>
           )}
+
+          {/* Stats */}
+          <div className="flex items-center gap-8 mb-4">
+            {stats.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="text-xl font-bold">{stat.value}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-2 w-full max-w-sm">
+            <div className="flex gap-2">
+              <Button variant="accent" className="flex-1">
+                Edit Profile
+              </Button>
+              <Button variant="outline" className="flex-1">
+                Share Profile
+              </Button>
+            </div>
+            <Button 
+              variant="default" 
+              className="w-full"
+              onClick={() => navigate('/create-post')}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Post
+            </Button>
+          </div>
         </div>
 
         {/* Certifications */}
