@@ -134,21 +134,20 @@ const Messages = () => {
       const items: ConversationListItem[] = [];
       for (const id of ids) {
         // Find the other participant's user_id first (no FK join available)
-        const { data: otherRow, error: otherErr } = await supabase
+        const { data: otherRows } = await supabase
           .from('conversation_participants')
           .select('user_id')
           .eq('conversation_id', id)
           .neq('user_id', userId)
-          .limit(1)
-          .single();
+          .limit(1);
 
         let otherProfile: any = null;
-        if (!otherErr && otherRow?.user_id) {
+        if (otherRows && otherRows.length > 0) {
           const { data: prof } = await supabase
             .from('profiles')
             .select('id, username, full_name, avatar_url')
-            .eq('id', otherRow.user_id)
-            .single();
+            .eq('id', otherRows[0].user_id)
+            .maybeSingle();
           otherProfile = prof as any;
         }
 
@@ -180,15 +179,6 @@ const Messages = () => {
       });
 
       setConversations(items);
-
-      // Only auto-open first conversation if there's no conversation ID in URL and no selection
-      const params = new URLSearchParams(location.search);
-      const hasExplicitConversation = params.get('c') || params.get('u');
-      if (!selectedConversation && items.length > 0 && !hasExplicitConversation) {
-        const first = items[0].id;
-        setSelectedConversation(first);
-        navigate(`/messages?c=${first}`, { replace: true, state: { conversationId: first } });
-      }
     };
 
     loadConversations();
