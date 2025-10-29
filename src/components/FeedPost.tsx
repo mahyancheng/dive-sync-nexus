@@ -22,6 +22,7 @@ interface DiveLog {
 
 interface FeedPostProps {
   author: {
+    id?: string;
     name: string;
     avatar?: string;
     role: string;
@@ -54,6 +55,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing, 
   const [isDiveLogExpanded, setIsDiveLogExpanded] = useState(true);
 
   const profileData = {
+    id: author.id,
     name: author.name,
     avatar: author.avatar,
     role: author.role,
