@@ -13,7 +13,7 @@ import AuthGuard from "@/components/AuthGuard";
 
 const CreatePost = () => {
   const [caption, setCaption] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
   const [loading, setLoading] = useState(false);
   
@@ -33,9 +33,14 @@ const CreatePost = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleImageUrlChange = (url: string) => {
-    setImageUrl(url);
-    setImagePreview(url);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    setFile(f);
+    if (f) {
+      setImagePreview(URL.createObjectURL(f));
+    } else {
+      setImagePreview("");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,12 +60,25 @@ const CreatePost = () => {
         return;
       }
 
+      // Upload media to storage
+      let publicUrl: string | null = null;
+      if (file) {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from('posts').upload(path, file, {
+          contentType: file.type,
+        });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = supabase.storage.from('posts').getPublicUrl(path);
+        publicUrl = publicData.publicUrl;
+      }
+
       // Create post
       const { data: postData, error: postError } = await supabase
         .from("posts")
         .insert({
           author_id: user.id,
-          image_url: imageUrl,
+          image_url: publicUrl,
           caption: caption || null,
         })
         .select()
@@ -130,17 +148,16 @@ const CreatePost = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="image-url">Image URL</Label>
+                <Label htmlFor="media">Upload Media</Label>
                 <Input
-                  id="image-url"
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  value={imageUrl}
-                  onChange={(e) => handleImageUrlChange(e.target.value)}
+                  id="media"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                  Paste a URL to an image you'd like to share
+                  Upload an image from your device
                 </p>
               </div>
 
@@ -307,7 +324,7 @@ const CreatePost = () => {
                 </TabsContent>
               </Tabs>
 
-              <Button type="submit" className="w-full" disabled={loading || !imageUrl}>
+              <Button type="submit" className="w-full" disabled={loading || !file}>
                 {loading ? "Posting..." : includeDiveLog ? "Create Post with Dive Log" : "Create Post"}
               </Button>
             </form>

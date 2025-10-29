@@ -129,13 +129,24 @@ const Messages = () => {
       // For each conversation: fetch other participant profile + last message
       const items: ConversationListItem[] = [];
       for (const id of ids) {
-        const { data: others } = await supabase
+        // Find the other participant's user_id first (no FK join available)
+        const { data: otherRow, error: otherErr } = await supabase
           .from('conversation_participants')
-          .select('user_id, profiles!inner(id, username, full_name, avatar_url)')
+          .select('user_id')
           .eq('conversation_id', id)
-          .neq('user_id', userId);
+          .neq('user_id', userId)
+          .limit(1)
+          .single();
 
-        const otherProfile = others?.[0]?.profiles as any;
+        let otherProfile: any = null;
+        if (!otherErr && otherRow?.user_id) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('id, username, full_name, avatar_url')
+            .eq('id', otherRow.user_id)
+            .single();
+          otherProfile = prof as any;
+        }
 
         const { data: lastMsg } = await supabase
           .from('messages')
