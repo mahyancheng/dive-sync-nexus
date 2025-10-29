@@ -66,7 +66,7 @@ const Messages = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Helpers to read URL/state params
+  // Helpers to read URL/state params - only update when location.search changes
   const navParams = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const fromState = (location as any)?.state || {};
@@ -74,16 +74,20 @@ const Messages = () => {
       c: params.get('c') as string | null,
       u: (fromState.targetUserId as string | null) || (params.get('u') as string | null),
     };
-  }, [location.search, (location as any)?.state]);
+  }, [location.search]);
 
   // Auto-create/get a DM when ?u is present, then switch URL to ?c
   useEffect(() => {
     if (!sessionReady || !userId) return;
 
     const boot = async () => {
-      const { u, c } = navParams;
+      const params = new URLSearchParams(location.search);
+      const u = params.get('u');
+      const c = params.get('c');
+      
       console.log('[Messages:boot]', { u, c, userId });
-      if (c) {
+      
+      if (c && c !== selectedConversation) {
         setSelectedConversation(c);
         return;
       }
@@ -104,7 +108,7 @@ const Messages = () => {
     };
 
     boot();
-  }, [sessionReady, userId, navParams, navigate]);
+  }, [sessionReady, userId, location.search]);
 
   // Load conversations for current user
   useEffect(() => {
@@ -177,9 +181,10 @@ const Messages = () => {
 
       setConversations(items);
 
-      // If no selection and no explicit intent (?u or ?c), auto-open the first conversation
-      const hasExplicit = navParams.c || navParams.u;
-      if (!selectedConversation && items.length > 0 && !hasExplicit) {
+      // Only auto-open first conversation if there's no conversation ID in URL and no selection
+      const params = new URLSearchParams(location.search);
+      const hasExplicitConversation = params.get('c') || params.get('u');
+      if (!selectedConversation && items.length > 0 && !hasExplicitConversation) {
         const first = items[0].id;
         setSelectedConversation(first);
         navigate(`/messages?c=${first}`, { replace: true, state: { conversationId: first } });
@@ -187,7 +192,7 @@ const Messages = () => {
     };
 
     loadConversations();
-  }, [sessionReady, userId, selectedConversation, navParams, navigate]);
+  }, [sessionReady, userId]);
 
   // Load messages whenever selectedConversation changes
   useEffect(() => {
