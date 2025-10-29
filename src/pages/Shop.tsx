@@ -3,18 +3,24 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, ShoppingCart, Star, TrendingUp, Heart } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, ShoppingCart, Star, TrendingUp, Heart, Waves, MapPin, Calendar } from "lucide-react";
 import ProductDetail from "@/components/ProductDetail";
+import TripDetail from "@/components/TripDetail";
 import AuthGuard from "@/components/AuthGuard";
 import { supabase } from "@/integrations/supabase/client";
 
 const Shop = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
   const [productsData, setProductsData] = useState<any[]>([]);
+  const [experiencesData, setExperiencesData] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     fetchProducts();
+    fetchExperiences();
   }, []);
 
   const fetchProducts = async () => {
@@ -26,14 +32,22 @@ const Shop = () => {
     if (data) setProductsData(data);
   };
 
+  const fetchExperiences = async () => {
+    const { data } = await supabase
+      .from('experiences')
+      .select('*, dive_centers(name, avatar_url, owner_id)')
+      .order('created_at', { ascending: false });
+    if (data) setExperiencesData(data);
+  };
+
   const toggleLike = (id: string) => {
-    const newLiked = new Set(likedProducts);
+    const newLiked = new Set(likedItems);
     if (newLiked.has(id)) {
       newLiked.delete(id);
     } else {
       newLiked.add(id);
     }
-    setLikedProducts(newLiked);
+    setLikedItems(newLiked);
   };
 
   const products = productsData.length > 0 ? productsData.map(p => ({
@@ -111,30 +125,99 @@ const Shop = () => {
     },
   ];
 
+  const experiences = experiencesData.length > 0 ? experiencesData.map(exp => ({
+    id: exp.id,
+    dive_center_id: (exp.dive_centers as any)?.owner_id,
+    title: exp.title,
+    centre: (exp.dive_centers as any)?.name || 'Dive Center',
+    location: exp.location,
+    price: exp.price,
+    rating: exp.rating || 0,
+    reviews: exp.reviews_count || 0,
+    image: exp.image_url || 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800',
+    nextDate: exp.next_date ? new Date(exp.next_date).toLocaleDateString() : 'TBD',
+    seatsLeft: exp.spots_left,
+    badges: exp.badges || [],
+    description: exp.description,
+    duration: exp.duration,
+    difficulty: exp.difficulty,
+    includes: exp.includes,
+  })) : [
+    {
+      title: "2-Tank Morning Reef Dive",
+      centre: "Ocean Adventures",
+      location: "Coral Bay, Australia",
+      price: 120,
+      rating: 4.9,
+      reviews: 124,
+      image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800",
+      nextDate: "Nov 15, 2025",
+      seatsLeft: 3,
+      badges: ["Last Seats", "Popular"],
+    },
+    {
+      title: "PADI Open Water Course",
+      centre: "Deep Blue Diving",
+      location: "Phuket, Thailand",
+      price: 450,
+      rating: 5.0,
+      reviews: 89,
+      image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800",
+      nextDate: "Nov 20, 2025",
+      seatsLeft: 5,
+      badges: ["Course", "Certification"],
+    },
+  ];
+
+  // Filter function
+  const filterItems = (items: any[]) => {
+    return items.filter(item => 
+      searchQuery === "" || 
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
   return (
     <AuthGuard>
       <div className="w-screen min-h-screen bg-background pt-4 pb-20">
       <div className="w-full px-4 pt-16">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Dive Gear Shop</h1>
-          <p className="text-muted-foreground">Quality equipment for your underwater adventures</p>
+          <h1 className="text-3xl font-bold mb-2">Dive Shop</h1>
+          <p className="text-muted-foreground">Gear, courses, and dive experiences</p>
         </div>
 
         {/* Search Bar */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="relative max-w-2xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
-              placeholder="Search for dive gear, equipment, accessories..."
+              placeholder="Search for gear, trips, or courses..."
               className="pl-10 h-12"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {products.map((product, index) => (
+        {/* Tabs */}
+        <Tabs defaultValue="gear" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="gear">
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Dive Gear
+            </TabsTrigger>
+            <TabsTrigger value="experiences">
+              <Waves className="w-4 h-4 mr-2" />
+              Trips & Courses
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Gear Tab */}
+          <TabsContent value="gear" className="mt-0">
+            <div className="grid grid-cols-2 gap-3">
+              {filterItems(products).map((product, index) => (
             <div
               key={index}
               className="relative max-w-full rounded-xl bg-gradient-to-br from-neutral-600/30 to-violet-300/30 overflow-hidden cursor-pointer bento-card hover:shadow-glow transition-all"
@@ -161,12 +244,12 @@ const Shop = () => {
                     size="icon"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleLike(product.id);
+                      toggleLike(product.id || index.toString());
                     }}
                     className="absolute top-2 right-2 h-7 w-7 rounded-full glass-effect backdrop-blur-sm"
                     variant="ghost"
                   >
-                    <Heart className={`w-3.5 h-3.5 ${likedProducts.has(product.id) ? 'fill-coral text-coral' : ''}`} />
+                    <Heart className={`w-3.5 h-3.5 ${likedItems.has(product.id || index.toString()) ? 'fill-coral text-coral' : ''}`} />
                   </Button>
               </div>
 
@@ -204,8 +287,87 @@ const Shop = () => {
                 </div>
               </Card>
             </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Experiences Tab */}
+          <TabsContent value="experiences" className="mt-0">
+            <div className="grid grid-cols-2 gap-3">
+              {filterItems(experiences).map((experience, index) => (
+                <Card 
+                  key={index} 
+                  className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group"
+                  onClick={() => setSelectedTrip(experience)}
+                >
+                  {/* Image */}
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <img
+                      src={experience.image}
+                      alt={experience.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                    {/* Badges */}
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                      {experience.badges?.slice(0, 2).map((badge: string, i: number) => (
+                        <Badge key={i} className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
+                          {badge}
+                        </Badge>
+                      ))}
+                    </div>
+                    {/* Price */}
+                    <div className="absolute bottom-2 right-2">
+                      <div className="glass-effect backdrop-blur-sm px-2 py-1 rounded-lg">
+                        <span className="text-sm font-bold text-accent">${experience.price}</span>
+                      </div>
+                    </div>
+                    {/* Like Button */}
+                    <Button
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLike(experience.id || `exp-${index}`);
+                      }}
+                      className="absolute top-2 right-2 h-7 w-7 rounded-full glass-effect backdrop-blur-sm"
+                      variant="ghost"
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${likedItems.has(experience.id || `exp-${index}`) ? 'fill-coral text-coral' : ''}`} />
+                    </Button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-1 line-clamp-2">{experience.title}</h3>
+                    <p className="text-xs text-muted-foreground mb-2">{experience.centre}</p>
+
+                    <div className="space-y-1.5 mb-3">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <MapPin className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground truncate">{experience.location}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Calendar className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">{experience.nextDate}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-coral fill-coral" />
+                          <span className="font-semibold">{experience.rating}</span>
+                          <span className="text-muted-foreground">({experience.reviews})</span>
+                        </div>
+                        <span className="text-muted-foreground">{experience.seatsLeft} left</span>
+                      </div>
+                    </div>
+
+                    <Button size="sm" className="w-full h-7 text-xs" variant="accent">
+                      Book Now
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Product Detail Modal */}
@@ -213,6 +375,14 @@ const Shop = () => {
         <ProductDetail
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+        />
+      )}
+
+      {/* Trip Detail Modal */}
+      {selectedTrip && (
+        <TripDetail
+          trip={selectedTrip}
+          onClose={() => setSelectedTrip(null)}
         />
       )}
     </div>

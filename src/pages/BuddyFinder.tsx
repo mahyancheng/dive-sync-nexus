@@ -14,6 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 const BuddyFinder = () => {
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [experiences, setExperiences] = useState<any[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("All");
+  const [selectedType, setSelectedType] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     fetchExperiences();
@@ -112,6 +115,20 @@ const BuddyFinder = () => {
     maxDepth: "30m"
   }));
 
+  // Extract unique locations and types
+  const locations = ["All", ...new Set(listings.map(l => l.location.split(',')[1]?.trim() || l.location))];
+  const types = ["All", "Reef Dive", "Course", "Night Dive", "Charter", "Wreck Dive"];
+
+  // Filter listings
+  const filteredListings = listings.filter(listing => {
+    const matchesLocation = selectedLocation === "All" || listing.location.includes(selectedLocation);
+    const matchesType = selectedType === "All" || listing.badges.some(b => b.toLowerCase().includes(selectedType.toLowerCase().replace(" ", "")));
+    const matchesSearch = searchQuery === "" || 
+      listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.location.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesLocation && matchesType && matchesSearch;
+  });
+
   return (
     <AuthGuard>
       <div className="w-screen min-h-screen bg-background pt-4 pb-20">
@@ -123,13 +140,51 @@ const BuddyFinder = () => {
         </div>
 
         {/* Search Bar */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="relative max-w-2xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
               placeholder="Search by location, dive site, or activity..."
               className="pl-10 h-12"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-6 space-y-3">
+          <div>
+            <p className="text-sm font-medium mb-2">Location</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {locations.map((location) => (
+                <Button
+                  key={location}
+                  size="sm"
+                  variant={selectedLocation === location ? "accent" : "outline"}
+                  onClick={() => setSelectedLocation(location)}
+                  className="whitespace-nowrap"
+                >
+                  {location}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium mb-2">Type</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {types.map((type) => (
+                <Button
+                  key={type}
+                  size="sm"
+                  variant={selectedType === type ? "accent" : "outline"}
+                  onClick={() => setSelectedType(type)}
+                  className="whitespace-nowrap"
+                >
+                  {type}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -153,7 +208,7 @@ const BuddyFinder = () => {
           <TabsContent value="grid" className="mt-0">
             {/* Listings Grid */}
             <div className="grid grid-cols-2 gap-3">
-              {listings.map((listing, index) => (
+              {filteredListings.map((listing, index) => (
                 <Card 
                   key={index} 
                   className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer group"
@@ -283,7 +338,7 @@ const BuddyFinder = () => {
             <div>
               <h3 className="text-lg font-semibold mb-3">All Open Trips</h3>
               <div className="space-y-3">
-                {listings.slice(0, 4).map((listing, index) => (
+                {filteredListings.slice(0, 4).map((listing, index) => (
                   <Card 
                     key={index}
                     className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer"
