@@ -131,7 +131,7 @@ const Messages = () => {
       for (const id of ids) {
         const { data: others } = await supabase
           .from('conversation_participants')
-          .select('user_id, profiles!inner(username, full_name, avatar_url)')
+          .select('user_id, profiles!inner(id, username, full_name, avatar_url)')
           .eq('conversation_id', id)
           .neq('user_id', userId);
 
