@@ -322,18 +322,32 @@ onClick={async () => {
                                   .eq('author_id', account.id)
                                   .order('created_at', { ascending: false });
 
+                                // Fetch followers count
+                                const { count: followersCount } = await supabase
+                                  .from('follows')
+                                  .select('*', { count: 'exact', head: true })
+                                  .eq('following_id', account.id);
+
+                                // Fetch following count
+                                const { count: followingCount } = await supabase
+                                  .from('follows')
+                                  .select('*', { count: 'exact', head: true })
+                                  .eq('follower_id', account.id);
+
                                 const u = userRow || users.find(u => u.id === account.id);
                                 if (u) {
                                   setSelectedProfile({
                                     id: u.id,
                                     name: u.full_name || u.username,
-                                    avatar: u.avatar_url,
+                                    avatar: u.avatar_url || '',
                                     role: u.bio || 'Diver',
                                     location: u.location,
                                     bio: u.bio,
                                     totalDives: u.total_dives || 0,
                                     certifications: u.certifications || [],
                                     joinedDate: u.joined_date ? new Date(u.joined_date).toLocaleDateString() : undefined,
+                                    followers: followersCount || 0,
+                                    following: followingCount || 0,
                                     posts: (userPosts || []).map(p => ({
                                       image: p.image_url,
                                       caption: p.caption || '',
