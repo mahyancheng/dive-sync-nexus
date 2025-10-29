@@ -8,7 +8,6 @@ const BottomNav = () => {
   
   const navItems = [
     { path: "/", label: "Feed", icon: Home },
-    { path: "/explore", label: "Explore", icon: Compass },
     { path: "/buddy-finder", label: "Buddies", icon: Users },
     { path: "/messages", label: "Messages", icon: MessageCircle },
     { path: "/profile", label: "Profile", icon: User },

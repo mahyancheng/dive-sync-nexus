@@ -3,7 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Users, Calendar, Star, Map as MapIcon } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, MapPin, Users, Calendar, Star, Map as MapIcon, Heart, UserPlus, Grid3x3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TripDetail from "@/components/TripDetail";
 import Map from "@/components/Map";
@@ -132,16 +133,20 @@ const BuddyFinder = () => {
           </div>
         </div>
 
-        {/* Tabs for Grid/Map View */}
+        {/* Tabs for Grid/Map/Open Trips View */}
         <Tabs defaultValue="grid" className="space-y-6">
           <TabsList>
             <TabsTrigger value="grid">
-              <Calendar className="w-4 h-4 mr-2" />
+              <Grid3x3 className="w-4 h-4 mr-2" />
               Grid View
             </TabsTrigger>
             <TabsTrigger value="map">
               <MapIcon className="w-4 h-4 mr-2" />
               Map View
+            </TabsTrigger>
+            <TabsTrigger value="open-trips">
+              <Users className="w-4 h-4 mr-2" />
+              Open Trips
             </TabsTrigger>
           </TabsList>
 
@@ -216,6 +221,125 @@ const BuddyFinder = () => {
           <TabsContent value="map" className="mt-0">
             <div className="h-[600px] w-full">
               <Map divePoints={divePoints} className="h-full w-full" />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="open-trips" className="mt-0">
+            {/* Recommended Trip of the Day */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3">🌟 Recommended for You</h3>
+              <Card className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all">
+                <div className="relative aspect-[16/9] overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800"
+                    alt="Recommended dive"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 left-3">
+                    <Badge className="glass-effect backdrop-blur-sm">Perfect Match</Badge>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h4 className="font-semibold text-lg mb-2">Weekend Reef Exploration</h4>
+                  <p className="text-sm text-muted-foreground mb-3">Join a group of intermediate divers exploring vibrant coral reefs</p>
+                  
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      <span>Great Barrier Reef, Australia</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span>Dec 15, 2025 • 9:00 AM</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span>4 spots left of 8</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-4">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=host" />
+                      <AvatarFallback>DC</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium">Ocean Adventures</p>
+                      <p className="text-xs text-muted-foreground">Dive Center</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button className="flex-1" variant="accent">Request to Join</Button>
+                    <Button variant="outline" size="icon">
+                      <Heart className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* All Open Trips */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">All Open Trips</h3>
+              <div className="space-y-3">
+                {listings.slice(0, 4).map((listing, index) => (
+                  <Card 
+                    key={index}
+                    className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer"
+                    onClick={() => setSelectedTrip(listing)}
+                  >
+                    <div className="flex gap-3 p-3">
+                      {/* Thumbnail */}
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                        <img
+                          src={listing.image}
+                          alt={listing.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm mb-1 line-clamp-1">{listing.title}</h4>
+                        
+                        <div className="space-y-1 mb-2">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <MapPin className="w-3 h-3" />
+                            <span className="truncate">{listing.location}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>{listing.nextDate}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1 text-xs">
+                            <Users className="w-3 h-3 text-muted-foreground" />
+                            <span className="font-medium">{listing.seatsLeft} spots left</span>
+                          </div>
+                          <span className="text-sm font-bold text-accent">${listing.price}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Buddy Finder Section */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-3">🤝 Find a Dive Buddy</h3>
+                <Card className="bento-card p-4 border-accent/20">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Looking for someone to dive with? Post your dive plans or browse other divers seeking buddies.
+                  </p>
+                  <Button className="w-full" variant="outline">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Post Buddy Request
+                  </Button>
+                </Card>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
