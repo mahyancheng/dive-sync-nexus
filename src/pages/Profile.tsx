@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Award, MapPin, Users, TrendingUp, Plus, Calendar, Waves, Clock, Gauge, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Award, MapPin, Users, TrendingUp, Plus, Calendar, Waves, Clock, Gauge, ChevronDown, ChevronUp, Share2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import AuthGuard from "@/components/AuthGuard";
 import PostDetail from "@/components/PostDetail";
+import { motion } from "framer-motion";
 
 const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
@@ -86,44 +87,88 @@ const Profile = () => {
           </Button>
         </div>
 
-        {/* Profile Info */}
-        <div className="flex flex-col items-center mb-6">
-          <Avatar className="w-24 h-24 mb-4 border-4 border-accent/20">
-            <AvatarImage src={profile.avatar_url} />
-            <AvatarFallback className="bg-accent text-accent-foreground text-2xl">
-              {(profile.full_name || profile.username).slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <h2 className="text-xl font-bold mb-1">{profile.full_name || profile.username}</h2>
-          <p className="text-muted-foreground mb-2">{profile.bio || 'Diver'}</p>
-          {profile.location && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-              <MapPin className="w-4 h-4" />
-              <span>{profile.location}</span>
-            </div>
-          )}
-
-          {/* Stats */}
-          <div className="flex items-center gap-8 mb-4">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-xl font-bold">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
+        {/* Profile Card with Background Image */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative w-full h-[420px] rounded-3xl border border-border/20 overflow-hidden shadow-xl shadow-black/5 mb-6"
+        >
+          {/* Background Image */}
+          <div className="absolute inset-0 w-full h-full">
+            <img
+              src={profile.avatar_url || "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&h=800&fit=crop&auto=format&q=80"}
+              alt={profile.full_name || profile.username}
+              className="w-full h-full object-cover"
+            />
           </div>
 
-          <div className="flex flex-col gap-2 w-full max-w-sm">
-            <div className="flex gap-2">
-              <Button variant="accent" className="flex-1">
+          {/* Gradient Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/40 via-background/20 via-background/10 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-background/90 via-background/60 via-background/30 via-background/15 via-background/8 to-transparent backdrop-blur-[1px]" />
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background/85 via-background/40 to-transparent backdrop-blur-sm" />
+
+          {/* Content */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 space-y-3">
+            {/* Name and Location */}
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-1">
+                {profile.full_name || profile.username}
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-2">
+                {profile.bio || 'Diving enthusiast exploring the ocean depths'}
+              </p>
+              {profile.location && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>{profile.location}</span>
+                </div>
+              )}
+              
+              {/* Certification Tags */}
+              {profile.certifications && profile.certifications.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {profile.certifications.map((cert: string, idx: number) => (
+                    <Badge key={idx} variant="secondary" className="text-[10px] py-0 px-2 h-5">
+                      {cert}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Waves className="w-4 h-4" />
+                <span className="font-semibold text-foreground">{stats[0].value}</span>
+                <span className="text-sm">dives</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span className="font-semibold text-foreground">{stats[1].value}</span>
+                <span className="text-sm">followers</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <TrendingUp className="w-4 h-4" />
+                <span className="font-semibold text-foreground">{stats[2].value}</span>
+                <span className="text-sm">following</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-1">
+              <Button variant="accent" size="sm" className="flex-1">
                 Edit Profile
               </Button>
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" size="sm" className="flex-1">
+                <Share2 className="w-3.5 h-3.5 mr-1.5" />
                 Share Profile
               </Button>
             </div>
             <Button 
               variant="default" 
+              size="sm"
               className="w-full"
               onClick={() => navigate('/create-post')}
             >
@@ -131,22 +176,7 @@ const Profile = () => {
               Create Post
             </Button>
           </div>
-        </div>
-
-        {/* Certifications */}
-        {profile.certifications && profile.certifications.length > 0 && (
-          <Card className="p-4 mb-6 border-accent/20">
-            <div className="flex items-center gap-2 mb-3">
-              <Award className="w-5 h-5 text-accent" />
-              <h3 className="font-semibold">Certifications</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {profile.certifications.map((cert: string, idx: number) => (
-                <Badge key={idx} variant="secondary">{cert}</Badge>
-              ))}
-            </div>
-          </Card>
-        )}
+        </motion.div>
 
         {/* Tabs */}
         <Tabs defaultValue="posts" className="w-full">
@@ -309,12 +339,26 @@ const Profile = () => {
             <Collapsible open={isDiveLogsOpen} onOpenChange={setIsDiveLogsOpen}>
               <Card className="overflow-hidden">
                 <CollapsibleTrigger className="w-full p-4 flex items-center justify-between hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1">
                     <Waves className="w-5 h-5 text-accent" />
                     <h3 className="font-semibold">Dive Logs</h3>
                     <Badge variant="secondary">{posts.filter(p => p.dive_logs && p.dive_logs.length > 0).length}</Badge>
                   </div>
-                  {isDiveLogsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/create-post');
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add
+                    </Button>
+                    {isDiveLogsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="p-4 pt-0">
