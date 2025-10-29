@@ -16,7 +16,7 @@ const Explore = () => {
       .from('posts')
       .select(`
         *,
-        profiles!inner(id, username, full_name, avatar_url, bio),
+        profiles(id, username, full_name, avatar_url, bio),
         dive_logs(
           *,
           dive_buddies(buddy_name, buddy_avatar)

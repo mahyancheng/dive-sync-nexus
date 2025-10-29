@@ -13,17 +13,42 @@ const Feed = () => {
   }, []);
 
   const fetchPosts = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (!uid) {
+      setPosts([]);
+      return;
+    }
+
+    const { data: followingRows, error: fErr } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', uid);
+
+    if (fErr) {
+      console.error('[Feed] follows fetch error', fErr);
+      setPosts([]);
+      return;
+    }
+
+    const authorIds = (followingRows || []).map((r: any) => r.following_id);
+    if (authorIds.length === 0) {
+      setPosts([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('posts')
       .select(`
         *,
-        profiles!inner(id, username, full_name, avatar_url, bio),
+        profiles(id, username, full_name, avatar_url, bio),
         dive_logs(
           *,
           dive_buddies(buddy_name, buddy_avatar)
         ),
         dive_centers(name, location, avatar_url)
       `)
+      .in('author_id', authorIds)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -63,6 +88,8 @@ const Feed = () => {
         } : undefined
       }));
       setPosts(formattedPosts);
+    } else {
+      setPosts([]);
     }
   };
 
