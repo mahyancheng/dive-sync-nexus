@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import AuthGuard from "@/components/AuthGuard";
 import PostDetail from "@/components/PostDetail";
+import EditProfile from "@/components/EditProfile";
 import { motion } from "framer-motion";
 
 const Profile = () => {
@@ -18,6 +19,7 @@ const Profile = () => {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isDiveLogsOpen, setIsDiveLogsOpen] = useState(true);
   const [isBadgesOpen, setIsBadgesOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -158,7 +160,12 @@ const Profile = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-2 pt-1">
-              <Button variant="accent" size="sm" className="flex-1">
+              <Button 
+                variant="accent" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => setIsEditProfileOpen(true)}
+              >
                 Edit Profile
               </Button>
               <Button variant="outline" size="sm" className="flex-1">
@@ -406,6 +413,13 @@ const Profile = () => {
         onClose={() => setSelectedPostId(null)}
       />
     )}
+
+    <EditProfile
+      open={isEditProfileOpen}
+      onOpenChange={setIsEditProfileOpen}
+      profile={profile}
+      onProfileUpdate={fetchProfile}
+    />
     </AuthGuard>
   );
 };
