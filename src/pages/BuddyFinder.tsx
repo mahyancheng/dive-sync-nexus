@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, MapPin, Users, Calendar, Star, Map as MapIcon, Heart, UserPlus, Grid3x3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import TripDetail from "@/components/TripDetail";
 import Map from "@/components/Map";
 import AuthGuard from "@/components/AuthGuard";
@@ -334,53 +335,79 @@ const BuddyFinder = () => {
               </Card>
             </div>
 
-            {/* All Open Trips */}
+            {/* All Open Trips - Carousel */}
             <div>
-              <h3 className="text-lg font-semibold mb-3">All Open Trips</h3>
-              <div className="space-y-3">
-                {filteredListings.slice(0, 4).map((listing, index) => (
-                  <Card 
-                    key={index}
-                    className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer"
-                    onClick={() => setSelectedTrip(listing)}
-                  >
-                    <div className="flex gap-3 p-3">
-                      {/* Thumbnail */}
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={listing.image}
-                          alt={listing.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm mb-1 line-clamp-1">{listing.title}</h4>
-                        
-                        <div className="space-y-1 mb-2">
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <MapPin className="w-3 h-3" />
-                            <span className="truncate">{listing.location}</span>
+              <h3 className="text-lg font-semibold mb-4">All Open Trips</h3>
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: true,
+                }}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  {filteredListings.map((listing, index) => (
+                    <CarouselItem key={index} className="pl-2 md:pl-4 basis-[85%] md:basis-1/2">
+                      <Card 
+                        className="bento-card overflow-hidden border-accent/20 hover:shadow-glow transition-all cursor-pointer h-full"
+                        onClick={() => setSelectedTrip(listing)}
+                      >
+                        <div className="relative aspect-[16/9] overflow-hidden">
+                          <img
+                            src={listing.image}
+                            alt={listing.title}
+                            className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                          />
+                          {/* Badges */}
+                          <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                            {listing.badges?.slice(0, 2).map((badge, i) => (
+                              <Badge key={i} className="glass-effect backdrop-blur-sm text-xs px-1.5 py-0">
+                                {badge}
+                              </Badge>
+                            ))}
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            <span>{listing.nextDate}</span>
+                          {/* Price */}
+                          <div className="absolute bottom-2 right-2">
+                            <div className="glass-effect backdrop-blur-sm px-2 py-1 rounded-lg">
+                              <span className="text-sm font-bold text-accent">${listing.price}</span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1 text-xs">
-                            <Users className="w-3 h-3 text-muted-foreground" />
-                            <span className="font-medium">{listing.seatsLeft} spots left</span>
+                        <div className="p-4">
+                          <h4 className="font-semibold text-base mb-2 line-clamp-2">{listing.title}</h4>
+                          <p className="text-xs text-muted-foreground mb-3">{listing.centre}</p>
+                          
+                          <div className="space-y-2 mb-3">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="w-4 h-4" />
+                              <span className="truncate">{listing.location}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="w-4 h-4" />
+                              <span>{listing.nextDate}</span>
+                            </div>
                           </div>
-                          <span className="text-sm font-bold text-accent">${listing.price}</span>
+
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 text-coral fill-coral" />
+                              <span className="font-semibold">{listing.rating}</span>
+                              <span className="text-muted-foreground">({listing.reviews})</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Users className="w-4 h-4" />
+                              <span className="font-medium">{listing.seatsLeft} spots left</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="hidden md:flex -left-4" />
+                <CarouselNext className="hidden md:flex -right-4" />
+              </Carousel>
 
               {/* Buddy Finder Section */}
               <div className="mt-8">
