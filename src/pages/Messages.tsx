@@ -69,6 +69,24 @@ const Messages = () => {
     }
   }, [selectedConversation]);
 
+  // Auto-open latest conversation if none selected and no explicit target in URL/state
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const hasExplicit =
+      params.get('c') ||
+      params.get('u') ||
+      (location as any)?.state?.conversationId ||
+      (location as any)?.state?.targetUserId;
+
+    if (!selectedConversation && conversations.length > 0 && !hasExplicit) {
+      const first = conversations[0]?.id;
+      if (first) {
+        setSelectedConversation(first);
+        navigate(`/messages?c=${first}`, { replace: true, state: { conversationId: first } });
+      }
+    }
+  }, [conversations, selectedConversation, location.search, (location as any)?.state]);
+
   // Auto-open a conversation when navigated with state or ?c=
   useEffect(() => {
     const cid = getConversationIdFromNav();
@@ -355,7 +373,10 @@ const Messages = () => {
                   <Card
                     key={conversation.id}
                     className="p-4 cursor-pointer hover:bg-accent/5 transition-colors border-accent/20"
-                    onClick={() => setSelectedConversation(conversation.id)}
+                    onClick={() => {
+                      setSelectedConversation(conversation.id);
+                      navigate(`/messages?c=${conversation.id}`, { replace: true, state: { conversationId: conversation.id } });
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative flex-shrink-0">
