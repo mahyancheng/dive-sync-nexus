@@ -16,7 +16,7 @@ const Explore = () => {
       .from('posts')
       .select(`
         *,
-        profiles(id, username, full_name, avatar_url, bio),
+        author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url, bio),
         dive_logs(
           *,
           dive_buddies(buddy_name, buddy_avatar)
@@ -28,10 +28,10 @@ const Explore = () => {
     if (!error && data) {
       const formattedPosts = data.map((post: any) => ({
         author: {
-          id: post.profiles?.id,
-          name: post.profiles?.full_name || post.profiles?.username || 'Unknown',
-          avatar: post.profiles?.avatar_url || '',
-          role: post.profiles?.bio || 'Diver'
+          id: post.author?.id,
+          name: post.author?.full_name || post.author?.username || 'Unknown',
+          avatar: post.author?.avatar_url || '',
+          role: post.author?.bio || 'Diver'
         },
         image: post.image_url,
         caption: post.caption,
