@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import DiveLogDetail from "./DiveLogDetail";
 import ProfileDetail from "./ProfileDetail";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DiveLog {
   site: string;
@@ -53,20 +54,58 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing, 
   const [showDiveDetail, setShowDiveDetail] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [isDiveLogExpanded, setIsDiveLogExpanded] = useState(true);
+  const [profileData, setProfileData] = useState<any>(null);
 
-  const profileData = {
-    id: author.id,
-    name: author.name,
-    avatar: author.avatar,
-    role: author.role,
-    location: "Pacific Ocean",
-    bio: "Passionate diver exploring the world's oceans 🌊",
-    totalDives: 156,
-    certifications: ["PADI Advanced Open Water", "PADI Rescue Diver", "Nitrox Certified"],
-    joinedDate: "January 2023",
-    posts: [
-      { image, caption, likes }
-    ]
+  const handleProfileClick = async () => {
+    if (!author.id) return;
+
+    // Fetch full user data
+    const { data: userRow } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', author.id)
+      .maybeSingle();
+
+    // Fetch user's posts
+    const { data: userPosts } = await supabase
+      .from('posts')
+      .select('id, image_url, caption, likes_count')
+      .eq('author_id', author.id)
+      .order('created_at', { ascending: false });
+
+    // Fetch followers count
+    const { count: followersCount } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', author.id);
+
+    // Fetch following count
+    const { count: followingCount } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', author.id);
+
+    if (userRow) {
+      setProfileData({
+        id: userRow.id,
+        name: userRow.full_name || userRow.username,
+        avatar: userRow.avatar_url || '',
+        role: userRow.bio || 'Diver',
+        location: userRow.location,
+        bio: userRow.bio,
+        totalDives: userRow.total_dives || 0,
+        certifications: userRow.certifications || [],
+        joinedDate: userRow.joined_date ? new Date(userRow.joined_date).toLocaleDateString() : undefined,
+        followers: followersCount || 0,
+        following: followingCount || 0,
+        posts: (userPosts || []).map(p => ({
+          image: p.image_url,
+          caption: p.caption || '',
+          likes: p.likes_count || 0,
+        })),
+      });
+      setShowProfile(true);
+    }
   };
 
   return (
@@ -90,7 +129,7 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing, 
             <p className="text-white drop-shadow-lg text-sm">
               <span 
                 className="font-bold cursor-pointer hover:underline" 
-                onClick={() => setShowProfile(true)}
+                onClick={handleProfileClick}
               >
                 {author.name}
               </span>
@@ -282,11 +321,13 @@ const FeedPost = ({ author, image, caption, likes, comments, diveLogs, listing, 
       )}
 
       {/* Profile Detail Modal */}
-      <ProfileDetail
-        open={showProfile}
-        onOpenChange={setShowProfile}
-        profile={profileData}
-      />
+      {profileData && (
+        <ProfileDetail
+          open={showProfile}
+          onOpenChange={setShowProfile}
+          profile={profileData}
+        />
+      )}
     </div>
   );
 };
