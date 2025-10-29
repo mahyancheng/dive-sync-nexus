@@ -305,7 +305,7 @@ onClick={() => {
                         {searchAccounts.map((account) => {
                           const user = users.find(u => u.id === account.id);
                           return (
-                            <Card 
+                             <Card 
                               key={account.id} 
                               className="cursor-pointer hover:shadow-lg transition-shadow"
 onClick={async () => {
@@ -314,6 +314,13 @@ onClick={async () => {
                                   .select('*')
                                   .eq('id', account.id)
                                   .maybeSingle();
+
+                                // Fetch user's posts
+                                const { data: userPosts } = await supabase
+                                  .from('posts')
+                                  .select('id, image_url, caption, likes_count')
+                                  .eq('author_id', account.id)
+                                  .order('created_at', { ascending: false });
 
                                 const u = userRow || users.find(u => u.id === account.id);
                                 if (u) {
@@ -324,9 +331,14 @@ onClick={async () => {
                                     role: u.bio || 'Diver',
                                     location: u.location,
                                     bio: u.bio,
-                                    totalDives: u.total_dives,
-                                    certifications: u.certifications,
+                                    totalDives: u.total_dives || 0,
+                                    certifications: u.certifications || [],
                                     joinedDate: u.joined_date ? new Date(u.joined_date).toLocaleDateString() : undefined,
+                                    posts: (userPosts || []).map(p => ({
+                                      image: p.image_url,
+                                      caption: p.caption || '',
+                                      likes: p.likes_count || 0,
+                                    })),
                                   });
                                 }
                               }}
