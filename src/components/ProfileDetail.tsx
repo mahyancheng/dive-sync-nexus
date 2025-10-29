@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Portal from "./Portal";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ProfileDetailProps {
   open: boolean;
@@ -32,7 +33,74 @@ interface ProfileDetailProps {
 
 const ProfileDetail = ({ open, onOpenChange, profile }: ProfileDetailProps) => {
   const [isClosing, setIsClosing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isLoadingFollow, setIsLoadingFollow] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!profile.id || !open) return;
+    checkFollowStatus();
+  }, [profile.id, open]);
+
+  const checkFollowStatus = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session || !profile.id) return;
+
+    const { data, error } = await supabase
+      .from('follows')
+      .select('*')
+      .eq('follower_id', session.session.user.id)
+      .eq('following_id', profile.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      setIsFollowing(true);
+    } else {
+      setIsFollowing(false);
+    }
+  };
+
+  const handleToggleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      navigate('/auth');
+      return;
+    }
+
+    if (!profile.id) return;
+
+    setIsLoadingFollow(true);
+    try {
+      if (isFollowing) {
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', session.session.user.id)
+          .eq('following_id', profile.id);
+
+        if (error) throw error;
+        setIsFollowing(false);
+        toast.success('Unfollowed');
+      } else {
+        const { error } = await supabase
+          .from('follows')
+          .insert({
+            follower_id: session.session.user.id,
+            following_id: profile.id,
+          });
+
+        if (error) throw error;
+        setIsFollowing(true);
+        toast.success('Following');
+      }
+    } catch (error) {
+      console.error('Follow error:', error);
+      toast.error('Failed to update follow status');
+    } finally {
+      setIsLoadingFollow(false);
+    }
+  };
 
   const handleClose = () => {
     setIsClosing(true);
@@ -109,9 +177,13 @@ return (
                 )}
               </div>
               <div className="flex gap-2 mb-2">
-                <Button variant="accent">
+                <Button 
+                  variant={isFollowing ? "outline" : "accent"}
+                  onClick={handleToggleFollow}
+                  disabled={isLoadingFollow}
+                >
                   <Users className="w-4 h-4 mr-2" />
-                  Follow
+                  {isFollowing ? 'Following' : 'Follow'}
                 </Button>
                 <Button variant="outline" size="icon" onClick={handleMessage}>
                   <MessageCircle className="w-4 h-4" />

@@ -13,6 +13,7 @@ import Map from "@/components/Map";
 import PostDetail from "@/components/PostDetail";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface SearchResult {
   type: "post" | "product" | "account";
@@ -35,14 +36,31 @@ const Search = () => {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [loadingFollowIds, setLoadingFollowIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
       fetchPosts();
+      fetchFollowing();
     }
   }, [isOpen]);
+
+  const fetchFollowing = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) return;
+
+    const { data, error } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', session.session.user.id);
+
+    if (!error && data) {
+      setFollowingIds(new Set(data.map(f => f.following_id)));
+    }
+  };
 
   const fetchUsers = async () => {
     const { data, error } = await supabase
@@ -76,6 +94,55 @@ const handleMessageUser = async (userId: string) => {
   // Defer conversation creation to Messages page (?u=)
   console.log('[Search] Navigate to /messages?u=', userId);
   navigate(`/messages?u=${userId}`, { state: { targetUserId: userId } });
+};
+
+const handleToggleFollow = async (userId: string, e: React.MouseEvent) => {
+  e.stopPropagation();
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session) {
+    navigate('/auth');
+    return;
+  }
+
+  setLoadingFollowIds(prev => new Set(prev).add(userId));
+  try {
+    const isFollowing = followingIds.has(userId);
+    if (isFollowing) {
+      const { error } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', session.session.user.id)
+        .eq('following_id', userId);
+
+      if (error) throw error;
+      setFollowingIds(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+      toast.success('Unfollowed');
+    } else {
+      const { error } = await supabase
+        .from('follows')
+        .insert({
+          follower_id: session.session.user.id,
+          following_id: userId,
+        });
+
+      if (error) throw error;
+      setFollowingIds(prev => new Set(prev).add(userId));
+      toast.success('Following');
+    }
+  } catch (error) {
+    console.error('Follow error:', error);
+    toast.error('Failed to update follow status');
+  } finally {
+    setLoadingFollowIds(prev => {
+      const next = new Set(prev);
+      next.delete(userId);
+      return next;
+    });
+  }
 };
 
   const handleSearch = (query: string) => {
@@ -292,13 +359,12 @@ onClick={async () => {
                                   <div className="flex gap-2 flex-shrink-0">
                                     <Button 
                                       size="sm" 
-                                      variant="outline"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                      }}
+                                      variant={followingIds.has(account.id) ? "secondary" : "outline"}
+                                      onClick={(e) => handleToggleFollow(account.id, e)}
+                                      disabled={loadingFollowIds.has(account.id)}
                                     >
                                       <UsersIcon className="w-4 h-4 mr-1" />
-                                      Follow
+                                      {followingIds.has(account.id) ? 'Following' : 'Follow'}
                                     </Button>
                                     <Button 
                                       size="sm" 

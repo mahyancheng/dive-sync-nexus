@@ -376,7 +376,6 @@ const Messages = () => {
 
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold truncate">{selectedMeta?.name ?? 'Conversation'}</h2>
-                <p className="text-xs text-muted-foreground">Direct messages</p>
               </div>
 
               <Button size="icon" variant="ghost" className="flex-shrink-0" aria-label="More">
