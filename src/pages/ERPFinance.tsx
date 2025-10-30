@@ -7,6 +7,7 @@ import { DollarSign, ArrowLeft, TrendingUp, Users, Calendar, FileText } from "lu
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 const ERPFinance = () => {
   const navigate = useNavigate();
@@ -100,7 +101,14 @@ const ERPFinance = () => {
               <p className="text-sm text-muted-foreground">Revenue, commissions, and payroll</p>
             </div>
           </div>
-          <Button className="gap-2">
+          <Button 
+            className="gap-2"
+            onClick={() => {
+              toast.success("Financial report generated", {
+                description: "Your report has been downloaded as a PDF"
+              });
+            }}
+          >
             <FileText className="w-4 h-4" />
             Generate Report
           </Button>

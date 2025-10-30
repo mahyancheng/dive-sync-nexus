@@ -7,11 +7,14 @@ import { Calendar, ArrowLeft, Plus, Clock, MapPin, Users, Ship } from "lucide-re
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
+import { AddBookingDialog } from "@/components/erp/AddBookingDialog";
+import { GenerateMockDataButton } from "@/components/erp/GenerateMockDataButton";
 
 const ERPSchedule = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBookings();
@@ -28,6 +31,8 @@ const ERPSchedule = () => {
       .single();
 
     if (!centers) return;
+    
+    setDiveCenterId(centers.id);
 
     const { data, error } = await supabase
       .from("dive_bookings")
@@ -87,10 +92,14 @@ const ERPSchedule = () => {
               <p className="text-sm text-muted-foreground">Manage bookings and dive trips</p>
             </div>
           </div>
-          <Button className="gap-2">
-            <Plus className="w-4 h-4" />
-            New Booking
-          </Button>
+          <div className="flex gap-2">
+            {diveCenterId && (
+              <>
+                <GenerateMockDataButton diveCenterId={diveCenterId} onDataGenerated={fetchBookings} />
+                <AddBookingDialog diveCenterId={diveCenterId} onBookingAdded={fetchBookings} />
+              </>
+            )}
+          </div>
         </div>
 
         {/* Calendar View Placeholder */}

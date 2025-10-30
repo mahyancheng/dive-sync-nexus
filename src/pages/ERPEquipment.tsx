@@ -8,12 +8,16 @@ import { Package, ArrowLeft, Plus, AlertCircle, CheckCircle, Wrench, Ship } from
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
+import { AddEquipmentDialog } from "@/components/erp/AddEquipmentDialog";
+import { AddTankDialog } from "@/components/erp/AddTankDialog";
+import { GenerateMockDataButton } from "@/components/erp/GenerateMockDataButton";
 
 const ERPEquipment = () => {
   const navigate = useNavigate();
   const [equipment, setEquipment] = useState<any[]>([]);
   const [tanks, setTanks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEquipment();
@@ -31,6 +35,8 @@ const ERPEquipment = () => {
       .single();
 
     if (!centers) return;
+    
+    setDiveCenterId(centers.id);
 
     const { data, error } = await supabase
       .from("dive_equipment")
@@ -123,10 +129,12 @@ const ERPEquipment = () => {
               <p className="text-sm text-muted-foreground">Manage inventory and maintenance</p>
             </div>
           </div>
-          <Button className="gap-2">
-            <Plus className="w-4 h-4" />
-            Add Equipment
-          </Button>
+          {diveCenterId && (
+            <GenerateMockDataButton diveCenterId={diveCenterId} onDataGenerated={() => {
+              fetchEquipment();
+              fetchTanks();
+            }} />
+          )}
         </div>
 
         <Tabs defaultValue="equipment" className="space-y-6">
@@ -147,10 +155,18 @@ const ERPEquipment = () => {
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No equipment found</p>
-                  <Button className="mt-4" variant="outline">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Your First Equipment
-                  </Button>
+                  {diveCenterId && (
+                    <AddEquipmentDialog 
+                      diveCenterId={diveCenterId} 
+                      onEquipmentAdded={fetchEquipment}
+                      trigger={
+                        <Button className="mt-4" variant="outline">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Your First Equipment
+                        </Button>
+                      }
+                    />
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -208,10 +224,18 @@ const ERPEquipment = () => {
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Ship className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No tanks found</p>
-                  <Button className="mt-4" variant="outline">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Your First Tank
-                  </Button>
+                  {diveCenterId && (
+                    <AddTankDialog 
+                      diveCenterId={diveCenterId} 
+                      onTankAdded={fetchTanks}
+                      trigger={
+                        <Button className="mt-4" variant="outline">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Your First Tank
+                        </Button>
+                      }
+                    />
+                  )}
                 </CardContent>
               </Card>
             ) : (

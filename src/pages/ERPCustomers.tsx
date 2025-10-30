@@ -189,9 +189,14 @@ const ERPCustomers = () => {
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Actions</p>
-                          <Button size="sm" variant="outline" className="mt-1 h-8">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="mt-1 h-8"
+                            onClick={() => navigate(`/profile/${customer.username}`)}
+                          >
                             <FileText className="w-3 h-3 mr-1" />
-                            View Forms
+                            View Profile
                           </Button>
                         </div>
                       </div>
