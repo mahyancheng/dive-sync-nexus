@@ -1,10 +1,33 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, Anchor, Droplets, FileText, TrendingUp, DollarSign, Star } from "lucide-react";
+import { Calendar, Users, Anchor, Droplets, FileText, TrendingUp, DollarSign, Star, Waves } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const [hasDiveCenter, setHasDiveCenter] = useState(false);
+
+  useEffect(() => {
+    checkDiveCenter();
+  }, []);
+
+  const checkDiveCenter = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("dive_centers")
+      .select("id")
+      .eq("owner_id", user.id)
+      .single();
+
+    setHasDiveCenter(!!data);
+  };
+
   const stats = [
     { label: "Today's Sessions", value: "4", change: "+2", icon: Calendar, color: "text-accent" },
     { label: "Active Bookings", value: "28", change: "+5", icon: Users, color: "text-coral" },
@@ -72,9 +95,20 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background pt-4 pb-20">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Operations Dashboard</h1>
-          <p className="text-muted-foreground">Manage your dive center operations</p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Operations Dashboard</h1>
+            <p className="text-muted-foreground">Manage your dive center operations</p>
+          </div>
+          {hasDiveCenter && (
+            <Button 
+              onClick={() => navigate("/erp")}
+              className="gap-2 bg-gradient-to-r from-primary to-primary/60"
+            >
+              <Waves className="w-4 h-4" />
+              ERP Dashboard
+            </Button>
+          )}
         </div>
 
         {/* Stats Grid */}

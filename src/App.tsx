@@ -17,6 +17,11 @@ import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import CreatePost from "./pages/CreatePost";
+import ERP from "./pages/ERP";
+import ERPSchedule from "./pages/ERPSchedule";
+import ERPEquipment from "./pages/ERPEquipment";
+import ERPCustomers from "./pages/ERPCustomers";
+import ERPFinance from "./pages/ERPFinance";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +57,11 @@ const App = () => (
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/buddy-finder" element={<AppLayout><BuddyFinder /></AppLayout>} />
           <Route path="/messages" element={<AppLayout><Messages /></AppLayout>} />
+          <Route path="/erp" element={<AppLayout><ERP /></AppLayout>} />
+          <Route path="/erp/schedule" element={<AppLayout><ERPSchedule /></AppLayout>} />
+          <Route path="/erp/equipment" element={<AppLayout><ERPEquipment /></AppLayout>} />
+          <Route path="/erp/customers" element={<AppLayout><ERPCustomers /></AppLayout>} />
+          <Route path="/erp/finance" element={<AppLayout><ERPFinance /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
