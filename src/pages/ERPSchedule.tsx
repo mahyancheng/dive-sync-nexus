@@ -24,36 +24,47 @@ const ERPSchedule = () => {
   }, []);
 
   const fetchBookings = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    const { data: centers } = await supabase
-      .from("dive_centers")
-      .select("id")
-      .eq("owner_id", user.id)
-      .single();
+      const { data: centers } = await supabase
+        .from("dive_centers")
+        .select("id")
+        .eq("owner_id", user.id)
+        .maybeSingle();
 
-    if (!centers) return;
-    
-    setDiveCenterId(centers.id);
+      if (!centers) {
+        setLoading(false);
+        return;
+      }
+      
+      setDiveCenterId(centers.id);
 
-    const { data, error } = await supabase
-      .from("dive_bookings")
-      .select(`
-        *,
-        customer:profiles!dive_bookings_customer_id_fkey(username, avatar_url),
-        experience:experiences(title, location),
-        boat:boats(name, max_capacity),
-        conditions:dive_conditions(*),
-        catering:trip_catering(*)
-      `)
-      .eq("dive_center_id", centers.id)
-      .order("dive_date", { ascending: true });
+      const { data, error } = await supabase
+        .from("dive_bookings")
+        .select(`
+          *,
+          customer:profiles!dive_bookings_customer_id_fkey(username, avatar_url),
+          experience:experiences(title, location),
+          boat:boats(name, max_capacity),
+          conditions:dive_conditions(*),
+          catering:trip_catering(*)
+        `)
+        .eq("dive_center_id", centers.id)
+        .order("dive_date", { ascending: true });
 
-    if (!error && data) {
-      setBookings(data);
+      if (!error && data) {
+        setBookings(data);
+      }
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const getStatusColor = (status: string) => {
