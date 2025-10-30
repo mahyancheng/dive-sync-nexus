@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      boats: {
+        Row: {
+          created_at: string
+          dive_center_id: string
+          id: string
+          max_capacity: number
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dive_center_id: string
+          id?: string
+          max_capacity?: number
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dive_center_id?: string
+          id?: string
+          max_capacity?: number
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boats_dive_center_id_fkey"
+            columns: ["dive_center_id"]
+            isOneToOne: false
+            referencedRelation: "dive_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compressors: {
+        Row: {
+          created_at: string
+          dive_center_id: string
+          dives_since_service: number
+          id: string
+          maintenance_trigger: number
+          name: string
+          running_hours: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dive_center_id: string
+          dives_since_service?: number
+          id?: string
+          maintenance_trigger?: number
+          name: string
+          running_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dive_center_id?: string
+          dives_since_service?: number
+          id?: string
+          maintenance_trigger?: number
+          name?: string
+          running_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compressors_dive_center_id_fkey"
+            columns: ["dive_center_id"]
+            isOneToOne: false
+            referencedRelation: "dive_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -120,14 +199,18 @@ export type Database = {
       }
       dive_bookings: {
         Row: {
+          boat_id: string | null
           booking_date: string
           created_at: string
           customer_id: string
           deposit_amount: number | null
           dive_center_id: string
           dive_date: string
+          dive_type: string | null
           experience_id: string | null
+          group_name: string | null
           id: string
+          max_capacity: number | null
           notes: string | null
           participants_count: number
           payment_status: string
@@ -136,14 +219,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          boat_id?: string | null
           booking_date: string
           created_at?: string
           customer_id: string
           deposit_amount?: number | null
           dive_center_id: string
           dive_date: string
+          dive_type?: string | null
           experience_id?: string | null
+          group_name?: string | null
           id?: string
+          max_capacity?: number | null
           notes?: string | null
           participants_count?: number
           payment_status?: string
@@ -152,14 +239,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          boat_id?: string | null
           booking_date?: string
           created_at?: string
           customer_id?: string
           deposit_amount?: number | null
           dive_center_id?: string
           dive_date?: string
+          dive_type?: string | null
           experience_id?: string | null
+          group_name?: string | null
           id?: string
+          max_capacity?: number | null
           notes?: string | null
           participants_count?: number
           payment_status?: string
@@ -168,6 +259,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dive_bookings_boat_id_fkey"
+            columns: ["boat_id"]
+            isOneToOne: false
+            referencedRelation: "boats"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dive_bookings_customer_id_fkey"
             columns: ["customer_id"]
@@ -259,9 +357,64 @@ export type Database = {
         }
         Relationships: []
       }
+      dive_conditions: {
+        Row: {
+          booking_id: string
+          created_at: string
+          flag_reason: string | null
+          flag_status: string
+          id: string
+          override_at: string | null
+          override_by: string | null
+          override_reason: string | null
+          temperature: number | null
+          tide_status: string | null
+          wave_height: number | null
+          wind_speed: number | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          flag_reason?: string | null
+          flag_status?: string
+          id?: string
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          temperature?: number | null
+          tide_status?: string | null
+          wave_height?: number | null
+          wind_speed?: number | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          flag_reason?: string | null
+          flag_status?: string
+          id?: string
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          temperature?: number | null
+          tide_status?: string | null
+          wave_height?: number | null
+          wind_speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dive_conditions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dive_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dive_equipment: {
         Row: {
+          assigned_booking_id: string | null
           created_at: string
+          customer_id: string | null
           dive_center_id: string
           equipment_type: string
           id: string
@@ -274,7 +427,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_booking_id?: string | null
           created_at?: string
+          customer_id?: string | null
           dive_center_id: string
           equipment_type: string
           id?: string
@@ -287,7 +442,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_booking_id?: string | null
           created_at?: string
+          customer_id?: string | null
           dive_center_id?: string
           equipment_type?: string
           id?: string
@@ -300,6 +457,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dive_equipment_assigned_booking_id_fkey"
+            columns: ["assigned_booking_id"]
+            isOneToOne: false
+            referencedRelation: "dive_bookings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dive_equipment_dive_center_id_fkey"
             columns: ["dive_center_id"]
@@ -369,10 +533,14 @@ export type Database = {
         Row: {
           created_at: string
           dive_center_id: string
+          fill_timestamp: string | null
+          filler_name: string | null
           gas_type: string
           hydrostatic_test_date: string | null
           id: string
           last_fill_date: string | null
+          nitrox_mod: number | null
+          nitrox_o2_percentage: number | null
           pressure_bar: number | null
           status: string
           tank_number: string
@@ -382,10 +550,14 @@ export type Database = {
         Insert: {
           created_at?: string
           dive_center_id: string
+          fill_timestamp?: string | null
+          filler_name?: string | null
           gas_type?: string
           hydrostatic_test_date?: string | null
           id?: string
           last_fill_date?: string | null
+          nitrox_mod?: number | null
+          nitrox_o2_percentage?: number | null
           pressure_bar?: number | null
           status?: string
           tank_number: string
@@ -395,10 +567,14 @@ export type Database = {
         Update: {
           created_at?: string
           dive_center_id?: string
+          fill_timestamp?: string | null
+          filler_name?: string | null
           gas_type?: string
           hydrostatic_test_date?: string | null
           id?: string
           last_fill_date?: string | null
+          nitrox_mod?: number | null
+          nitrox_o2_percentage?: number | null
           pressure_bar?: number | null
           status?: string
           tank_number?: string
@@ -561,6 +737,8 @@ export type Database = {
       }
       maintenance_logs: {
         Row: {
+          boat_id: string | null
+          compressor_id: string | null
           cost: number | null
           created_at: string
           date: string
@@ -574,6 +752,8 @@ export type Database = {
           tank_id: string | null
         }
         Insert: {
+          boat_id?: string | null
+          compressor_id?: string | null
           cost?: number | null
           created_at?: string
           date?: string
@@ -587,6 +767,8 @@ export type Database = {
           tank_id?: string | null
         }
         Update: {
+          boat_id?: string | null
+          compressor_id?: string | null
           cost?: number | null
           created_at?: string
           date?: string
@@ -600,6 +782,20 @@ export type Database = {
           tank_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "maintenance_logs_boat_id_fkey"
+            columns: ["boat_id"]
+            isOneToOne: false
+            referencedRelation: "boats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_logs_compressor_id_fkey"
+            columns: ["compressor_id"]
+            isOneToOne: false
+            referencedRelation: "compressors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "maintenance_logs_dive_center_id_fkey"
             columns: ["dive_center_id"]
@@ -765,6 +961,54 @@ export type Database = {
           },
         ]
       }
+      priority_rules: {
+        Row: {
+          boat_id: string | null
+          created_at: string
+          customer_type: string
+          dive_center_id: string
+          dive_type: string
+          id: string
+          priority_order: number
+          rule_name: string
+        }
+        Insert: {
+          boat_id?: string | null
+          created_at?: string
+          customer_type: string
+          dive_center_id: string
+          dive_type: string
+          id?: string
+          priority_order?: number
+          rule_name: string
+        }
+        Update: {
+          boat_id?: string | null
+          created_at?: string
+          customer_type?: string
+          dive_center_id?: string
+          dive_type?: string
+          id?: string
+          priority_order?: number
+          rule_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "priority_rules_boat_id_fkey"
+            columns: ["boat_id"]
+            isOneToOne: false
+            referencedRelation: "boats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_rules_dive_center_id_fkey"
+            columns: ["dive_center_id"]
+            isOneToOne: false
+            referencedRelation: "dive_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           badges: string[] | null
@@ -896,6 +1140,47 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_catering: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          meal_items: string[] | null
+          notes: string | null
+          preparation_status: string
+          total_pax: number
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          meal_items?: string[] | null
+          notes?: string | null
+          preparation_status?: string
+          total_pax: number
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          meal_items?: string[] | null
+          notes?: string | null
+          preparation_status?: string
+          total_pax?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_catering_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dive_bookings"
             referencedColumns: ["id"]
           },
         ]

@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, Plus, Clock, MapPin, Users, Ship } from "lucide-react";
+import { Calendar, ArrowLeft, Clock, MapPin, Users, Ship } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { AddBookingDialog } from "@/components/erp/AddBookingDialog";
 import { GenerateMockDataButton } from "@/components/erp/GenerateMockDataButton";
+import { ConditionTracker } from "@/components/erp/ConditionTracker";
+import { FleetManager } from "@/components/erp/FleetManager";
+import { CateringManager } from "@/components/erp/CateringManager";
 
 const ERPSchedule = () => {
   const navigate = useNavigate();
@@ -39,7 +42,10 @@ const ERPSchedule = () => {
       .select(`
         *,
         customer:profiles!dive_bookings_customer_id_fkey(username, avatar_url),
-        experience:experiences(title, location)
+        experience:experiences(title, location),
+        boat:boats(name, max_capacity),
+        conditions:dive_conditions(*),
+        catering:trip_catering(*)
       `)
       .eq("dive_center_id", centers.id)
       .order("dive_date", { ascending: true });
@@ -102,20 +108,12 @@ const ERPSchedule = () => {
           </div>
         </div>
 
-        {/* Calendar View Placeholder */}
-        <Card className="glass-effect border-primary/20 mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Calendar View</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground border-2 border-dashed border-primary/20 rounded-lg">
-              <div className="text-center">
-                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Interactive calendar view coming soon</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Fleet & Facility Management */}
+        {diveCenterId && (
+          <div className="mb-6">
+            <FleetManager diveCenterId={diveCenterId} />
+          </div>
+        )}
 
         {/* Bookings List */}
         <div className="space-y-4">
@@ -151,9 +149,14 @@ const ERPSchedule = () => {
                         </Badge>
                       </div>
                       
-                      <h3 className="text-xl font-bold mb-2">
-                        {booking.experience?.title || "Custom Dive"}
-                      </h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-xl font-bold">
+                          {booking.experience?.title || booking.dive_type || "Custom Dive"}
+                        </h3>
+                        {booking.group_name && (
+                          <Badge variant="outline">{booking.group_name}</Badge>
+                        )}
+                      </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
@@ -170,8 +173,22 @@ const ERPSchedule = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <Ship className="w-4 h-4" />
-                          Customer: {booking.customer?.username || "Unknown"}
+                          {booking.boat?.name || "Shore Dive"}
                         </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <ConditionTracker
+                          bookingId={booking.id}
+                          conditions={booking.conditions?.[0]}
+                          onConditionUpdated={fetchBookings}
+                        />
+                        <CateringManager
+                          bookingId={booking.id}
+                          catering={booking.catering?.[0]}
+                          participantsCount={booking.participants_count}
+                          onCateringUpdated={fetchBookings}
+                        />
                       </div>
                     </div>
                     

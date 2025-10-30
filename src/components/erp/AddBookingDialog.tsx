@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,12 @@ interface AddBookingDialogProps {
 export const AddBookingDialog = ({ diveCenterId, onBookingAdded }: AddBookingDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [boats, setBoats] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     dive_date: "",
+    dive_type: "shore",
+    boat_id: "",
+    group_name: "",
     participants_count: 1,
     total_amount: "",
     deposit_amount: "",
@@ -26,6 +30,17 @@ export const AddBookingDialog = ({ diveCenterId, onBookingAdded }: AddBookingDia
     status: "pending",
     notes: ""
   });
+
+  useEffect(() => {
+    const fetchBoats = async () => {
+      const { data } = await supabase
+        .from("boats")
+        .select("*")
+        .eq("dive_center_id", diveCenterId);
+      if (data) setBoats(data);
+    };
+    fetchBoats();
+  }, [diveCenterId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +56,9 @@ export const AddBookingDialog = ({ diveCenterId, onBookingAdded }: AddBookingDia
           dive_center_id: diveCenterId,
           customer_id: user.id,
           dive_date: new Date(formData.dive_date).toISOString(),
+          dive_type: formData.dive_type,
+          boat_id: formData.boat_id || null,
+          group_name: formData.group_name || null,
           booking_date: new Date().toISOString(),
           participants_count: formData.participants_count,
           total_amount: parseFloat(formData.total_amount),
@@ -56,6 +74,9 @@ export const AddBookingDialog = ({ diveCenterId, onBookingAdded }: AddBookingDia
       setOpen(false);
       setFormData({
         dive_date: "",
+        dive_type: "shore",
+        boat_id: "",
+        group_name: "",
         participants_count: 1,
         total_amount: "",
         deposit_amount: "",
@@ -84,15 +105,68 @@ export const AddBookingDialog = ({ diveCenterId, onBookingAdded }: AddBookingDia
           <DialogTitle>Create New Booking</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="dive_date">Dive Date & Time</Label>
-            <Input
-              id="dive_date"
-              type="datetime-local"
-              required
-              value={formData.dive_date}
-              onChange={(e) => setFormData({ ...formData, dive_date: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="dive_date">Dive Date & Time</Label>
+              <Input
+                id="dive_date"
+                type="datetime-local"
+                required
+                value={formData.dive_date}
+                onChange={(e) => setFormData({ ...formData, dive_date: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="dive_type">Dive Type</Label>
+              <Select
+                value={formData.dive_type}
+                onValueChange={(value) => setFormData({ ...formData, dive_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="shore">Shore Dive</SelectItem>
+                  <SelectItem value="boat">Boat Dive</SelectItem>
+                  <SelectItem value="night">Night Dive</SelectItem>
+                  <SelectItem value="double">Double Dive</SelectItem>
+                  <SelectItem value="3-dive-trip">3-Dive Trip</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="boat">Assigned Boat</Label>
+              <Select
+                value={formData.boat_id}
+                onValueChange={(value) => setFormData({ ...formData, boat_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select boat (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {boats.map((boat) => (
+                    <SelectItem key={boat.id} value={boat.id}>
+                      {boat.name} (Cap: {boat.max_capacity})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="group_name">Group Name</Label>
+              <Input
+                id="group_name"
+                value={formData.group_name}
+                onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                placeholder="e.g., Morning Group"
+              />
+            </div>
           </div>
 
           <div>
