@@ -51,13 +51,19 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
     const monthEnd = endOfMonth(currentMonth);
     const effectiveEnd = eventEnd < monthEnd ? eventEnd : monthEnd;
     
+    // Calculate days until end of week (Saturday) or event end
     let span = 0;
     let currentDay = new Date(day);
-    while (currentDay <= effectiveEnd && currentDay.getDay() !== 0) {
+    const startDayOfWeek = currentDay.getDay();
+    const daysUntilSaturday = 6 - startDayOfWeek;
+    
+    while (currentDay <= effectiveEnd && span <= daysUntilSaturday) {
       span++;
       currentDay.setDate(currentDay.getDate() + 1);
+      if (currentDay > effectiveEnd) break;
     }
-    return span;
+    
+    return Math.max(1, span);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -117,16 +123,15 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const isCurrentDay = isToday(day);
 
-            // Separate single-day and multi-day events
-            const singleDayEvents = dayEvents.filter(e => isEventStartDay(e, day) && !e.endDate);
-            const multiDayEvents = dayEvents.filter(e => isEventStartDay(e, day) && e.endDate);
+            // Only show events on their start day to avoid duplicates
+            const eventsToShow = dayEvents.filter(e => isEventStartDay(e, day));
 
             return (
               <button
                 key={day.toISOString()}
                 onClick={() => onDateSelect(day)}
                 className={`
-                  relative p-3 rounded-lg border transition-all min-h-[120px] text-left
+                  relative p-3 rounded-lg border transition-all min-h-[120px] text-left overflow-visible
                   ${isCurrentDay ? "border-primary bg-primary/10" : "border-border"}
                   ${isSelected ? "ring-2 ring-primary" : ""}
                   ${!isSameMonth(day, currentMonth) ? "opacity-50" : ""}
@@ -138,51 +143,44 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                     {format(day, "d")}
                   </span>
                   
-                  {/* Multi-day Events (spanning) */}
-                  {multiDayEvents.map((event) => {
-                    const span = getEventSpanFromDay(event, day);
-                    return (
-                      <div
-                        key={event.id}
-                        className="absolute text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate z-10"
-                        style={{ 
-                          borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})`,
-                          width: `calc(${span * 100}% + ${(span - 1) * 8}px)`,
-                          top: '2.5rem'
-                        }}
-                        title={`${event.title} (${format(event.date, 'MMM d')} - ${format(event.endDate!, 'MMM d')})`}
-                      >
-                        <div className="font-medium truncate">{event.title}</div>
-                        {event.description && (
-                          <div className="text-muted-foreground truncate text-[10px]">
-                            {event.description}
+                  {/* Event List */}
+                  {eventsToShow.length > 0 && (
+                    <div className="space-y-1 overflow-visible">
+                      {eventsToShow.slice(0, 3).map((event, idx) => {
+                        const span = event.endDate ? getEventSpanFromDay(event, day) : 1;
+                        const isMultiDay = event.endDate && span > 1;
+                        
+                        return (
+                          <div
+                            key={event.id}
+                            className={`text-xs p-1.5 rounded border-l-2 border-current truncate z-10 ${
+                              isMultiDay ? 'absolute bg-primary/20 backdrop-blur-sm' : 'bg-accent/50'
+                            }`}
+                            style={isMultiDay ? { 
+                              borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})`,
+                              width: `calc(${span * 100}% + ${(span - 1) * 8}px)`,
+                              top: `${2.5 + idx * 1.8}rem`,
+                              left: '0.75rem'
+                            } : {
+                              borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})`
+                            }}
+                            title={event.endDate 
+                              ? `${event.title} (${format(event.date, 'MMM d')} - ${format(event.endDate, 'MMM d')})`
+                              : event.title
+                            }
+                          >
+                            <div className="font-medium truncate">{event.title}</div>
+                            {event.description && (
+                              <div className="text-muted-foreground truncate text-[10px]">
+                                {event.description}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Single-day Events */}
-                  {singleDayEvents.length > 0 && (
-                    <div className="space-y-1 overflow-hidden mt-8">
-                      {singleDayEvents.slice(0, 2).map((event) => (
-                        <div
-                          key={event.id}
-                          className="text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate"
-                          style={{ borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})` }}
-                          title={event.title}
-                        >
-                          <div className="font-medium truncate">{event.title}</div>
-                          {event.description && (
-                            <div className="text-muted-foreground truncate text-[10px]">
-                              {event.description}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {singleDayEvents.length > 2 && (
-                        <div className="text-[10px] text-muted-foreground font-medium">
-                          +{singleDayEvents.length - 2} more
+                        );
+                      })}
+                      {eventsToShow.length > 3 && (
+                        <div className="text-[10px] text-muted-foreground font-medium mt-16">
+                          +{eventsToShow.length - 3} more
                         </div>
                       )}
                     </div>

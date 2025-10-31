@@ -9,6 +9,7 @@ import { CalendarView } from "@/components/erp/CalendarView";
 import { EventsList } from "@/components/erp/EventsList";
 import { EventDetailDialog } from "@/components/erp/EventDetailDialog";
 import { CreateEventDialog } from "@/components/erp/CreateEventDialog";
+import { ConsolidateEventsButton } from "@/components/erp/ConsolidateEventsButton";
 
 interface Event {
   id: string;
@@ -156,12 +157,20 @@ const ERPSchedule = () => {
               <p className="text-sm text-muted-foreground">View and manage all scheduled events</p>
             </div>
           </div>
-          {diveCenterId && (
-            <CreateEventDialog 
-              diveCenterId={diveCenterId} 
-              onEventCreated={fetchEvents}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {diveCenterId && (
+              <>
+                <ConsolidateEventsButton 
+                  diveCenterId={diveCenterId}
+                  onConsolidated={fetchEvents}
+                />
+                <CreateEventDialog 
+                  diveCenterId={diveCenterId} 
+                  onEventCreated={fetchEvents}
+                />
+              </>
+            )}
+          </div>
         </div>
 
         {loading ? (
