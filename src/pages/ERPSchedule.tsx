@@ -93,8 +93,8 @@ const ERPSchedule = () => {
       bookings.forEach(booking => {
         allEvents.push({
           id: `booking-${booking.id}`,
-          title: booking.experience?.title || booking.dive_type || "Custom Dive",
-          description: `${booking.participants_count} divers - ${booking.group_name || ""}`,
+          title: booking.experience?.title || booking.group_name || "Dive Booking",
+          description: `${booking.participants_count} divers - ${booking.dive_type || "Custom"}`,
           date: new Date(booking.dive_date),
           location: booking.experience?.location,
           type: "booking",
