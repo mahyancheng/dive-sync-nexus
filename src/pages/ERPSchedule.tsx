@@ -1,21 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, Clock, MapPin, Users, Ship } from "lucide-react";
+import { Calendar, ArrowLeft, Plus } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { AddBookingDialog } from "@/components/erp/AddBookingDialog";
-import { GenerateMockDataButton } from "@/components/erp/GenerateMockDataButton";
-import { ConditionTracker } from "@/components/erp/ConditionTracker";
-import { FleetManager } from "@/components/erp/FleetManager";
-import { CateringManager } from "@/components/erp/CateringManager";
+import { CalendarView } from "@/components/erp/CalendarView";
+import { EventsList } from "@/components/erp/EventsList";
+
+interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  date: Date;
+  time?: string;
+  location?: string;
+  type: "booking" | "maintenance" | "work-order" | "custom";
+  priority: "low" | "medium" | "high";
+}
 
 const ERPSchedule = () => {
   const navigate = useNavigate();
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
 
@@ -42,10 +49,10 @@ const ERPSchedule = () => {
       return;
     }
 
-    fetchBookings();
+    fetchEvents();
   };
 
-  const fetchBookings = async () => {
+  const fetchEvents = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -55,47 +62,64 @@ const ERPSchedule = () => {
       .eq("owner_id", user.id)
       .maybeSingle();
 
-    if (!centers) return;
+    if (!centers) {
+      setLoading(false);
+      return;
+    }
     
     setDiveCenterId(centers.id);
 
-    const { data, error } = await supabase
+    // Fetch bookings
+    const { data: bookings } = await supabase
       .from("dive_bookings")
-      .select(`
-        *,
-        customer:profiles!dive_bookings_customer_id_fkey(username, avatar_url),
-        experience:experiences(title, location),
-        boat:boats(name, max_capacity),
-        conditions:dive_conditions(*),
-        catering:trip_catering(*)
-      `)
-      .eq("dive_center_id", centers.id)
-      .order("dive_date", { ascending: true });
+      .select("*, experience:experiences(title, location)")
+      .eq("dive_center_id", centers.id);
 
-    if (!error && data) {
-      setBookings(data);
+    // Fetch maintenance logs
+    const { data: maintenance } = await supabase
+      .from("maintenance_logs")
+      .select("*")
+      .eq("dive_center_id", centers.id);
+
+    const allEvents: Event[] = [];
+
+    // Convert bookings to events
+    if (bookings) {
+      bookings.forEach(booking => {
+        allEvents.push({
+          id: `booking-${booking.id}`,
+          title: booking.experience?.title || booking.dive_type || "Custom Dive",
+          description: `${booking.participants_count} divers - ${booking.group_name || ""}`,
+          date: new Date(booking.dive_date),
+          location: booking.experience?.location,
+          type: "booking",
+          priority: booking.status === "confirmed" ? "high" : "medium"
+        });
+      });
     }
+
+    // Convert maintenance to events
+    if (maintenance) {
+      maintenance.forEach(maint => {
+        if (maint.next_due_date) {
+          allEvents.push({
+            id: `maintenance-${maint.id}`,
+            title: `Maintenance: ${maint.maintenance_type}`,
+            description: maint.description,
+            date: new Date(maint.next_due_date),
+            type: "maintenance",
+            priority: "medium"
+          });
+        }
+      });
+    }
+
+    setEvents(allEvents);
     setLoading(false);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed": return "bg-green-500";
-      case "pending": return "bg-yellow-500";
-      case "completed": return "bg-blue-500";
-      case "cancelled": return "bg-red-500";
-      default: return "bg-gray-500";
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
+  const handleEventClick = (eventId: string) => {
+    toast.info("Event details coming soon");
   };
 
   return (
@@ -115,119 +139,42 @@ const ERPSchedule = () => {
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-3">
                 <Calendar className="w-8 h-8 text-primary" />
-                Dive Schedule
+                Calendar Management
               </h1>
-              <p className="text-sm text-muted-foreground">Manage bookings and dive trips</p>
+              <p className="text-sm text-muted-foreground">View and manage all scheduled events</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            {diveCenterId && (
-              <>
-                <GenerateMockDataButton diveCenterId={diveCenterId} onDataGenerated={fetchBookings} />
-                <AddBookingDialog diveCenterId={diveCenterId} onBookingAdded={fetchBookings} />
-              </>
-            )}
-          </div>
+          <Button className="gap-2">
+            <Plus className="w-4 h-4" />
+            New Event
+          </Button>
         </div>
 
-        {/* Fleet & Facility Management */}
-        {diveCenterId && (
-          <div className="mb-6">
-            <FleetManager diveCenterId={diveCenterId} />
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground">
+            Loading calendar...
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Calendar View - 2 columns */}
+            <div className="lg:col-span-2">
+              <CalendarView
+                events={events}
+                selectedDate={selectedDate}
+                onDateSelect={setSelectedDate}
+              />
+            </div>
+
+            {/* Events List - 1 column */}
+            <div>
+              <EventsList
+                events={events}
+                onEventClick={handleEventClick}
+                selectedDate={selectedDate}
+              />
+            </div>
           </div>
         )}
-
-        {/* Bookings List */}
-        <div className="space-y-4">
-          {loading ? (
-            <Card className="glass-effect">
-              <CardContent className="p-8 text-center text-muted-foreground">
-                Loading bookings...
-              </CardContent>
-            </Card>
-          ) : bookings.length === 0 ? (
-            <Card className="glass-effect">
-              <CardContent className="p-8 text-center text-muted-foreground">
-                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No bookings scheduled</p>
-              </CardContent>
-            </Card>
-          ) : (
-            bookings.map((booking) => (
-              <Card key={booking.id} className="glass-effect border-primary/20 hover:border-primary/40 transition-colors">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Badge className={getStatusColor(booking.status)}>
-                          {booking.status}
-                        </Badge>
-                        <Badge variant="outline" className={
-                          booking.payment_status === "paid" ? "border-green-500 text-green-500" :
-                          booking.payment_status === "deposit" ? "border-yellow-500 text-yellow-500" :
-                          "border-red-500 text-red-500"
-                        }>
-                          {booking.payment_status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-xl font-bold">
-                          {booking.experience?.title || booking.dive_type || "Custom Dive"}
-                        </h3>
-                        {booking.group_name && (
-                          <Badge variant="outline">{booking.group_name}</Badge>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          {formatDate(booking.dive_date)}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          {booking.experience?.location || "Location TBD"}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          {booking.participants_count} {booking.participants_count === 1 ? "diver" : "divers"}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Ship className="w-4 h-4" />
-                          {booking.boat?.name || "Shore Dive"}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        <ConditionTracker
-                          bookingId={booking.id}
-                          conditions={booking.conditions?.[0]}
-                          onConditionUpdated={fetchBookings}
-                        />
-                        <CateringManager
-                          bookingId={booking.id}
-                          catering={booking.catering?.[0]}
-                          participantsCount={booking.participants_count}
-                          onCateringUpdated={fetchBookings}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="text-2xl font-bold text-primary">
-                        ${booking.total_amount}
-                      </div>
-                      <Button size="sm" variant="outline">
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
       </main>
     </div>
   );
