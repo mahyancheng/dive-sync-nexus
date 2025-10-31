@@ -57,11 +57,11 @@ const App = () => (
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/buddy-finder" element={<AppLayout><BuddyFinder /></AppLayout>} />
           <Route path="/messages" element={<AppLayout><Messages /></AppLayout>} />
-          <Route path="/erp" element={<AppLayout><ERP /></AppLayout>} />
-          <Route path="/erp/schedule" element={<AppLayout><ERPSchedule /></AppLayout>} />
-          <Route path="/erp/equipment" element={<AppLayout><ERPEquipment /></AppLayout>} />
-          <Route path="/erp/customers" element={<AppLayout><ERPCustomers /></AppLayout>} />
-          <Route path="/erp/finance" element={<AppLayout><ERPFinance /></AppLayout>} />
+          <Route path="/erp" element={<ERP />} />
+          <Route path="/erp/schedule" element={<ERPSchedule />} />
+          <Route path="/erp/equipment" element={<ERPEquipment />} />
+          <Route path="/erp/customers" element={<ERPCustomers />} />
+          <Route path="/erp/finance" element={<ERPFinance />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Award, MapPin, Users, TrendingUp, Plus, Calendar, Waves, Clock, Gauge, ChevronDown, ChevronUp, Share2 } from "lucide-react";
+import { Settings, Award, MapPin, Users, TrendingUp, Plus, Calendar, Waves, Clock, Gauge, ChevronDown, ChevronUp, Share2, Store } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useEffect, useState } from "react";
@@ -20,12 +20,28 @@ const Profile = () => {
   const [isDiveLogsOpen, setIsDiveLogsOpen] = useState(true);
   const [isBadgesOpen, setIsBadgesOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isVendor, setIsVendor] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfile();
     fetchPosts();
+    checkVendorRole();
   }, []);
+
+  const checkVendorRole = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) return;
+
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.session.user.id);
+
+    if (roles) {
+      setIsVendor(roles.some(r => (r.role as string) === 'vendor'));
+    }
+  };
 
   const fetchProfile = async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -173,8 +189,22 @@ const Profile = () => {
                 Share Profile
               </Button>
             </div>
+            
+            {/* Vendor ERP Access Button */}
+            {isVendor && (
+              <Button 
+                variant="default" 
+                size="sm"
+                className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                onClick={() => navigate('/erp')}
+              >
+                <Store className="w-4 h-4 mr-2" />
+                Access Business Dashboard
+              </Button>
+            )}
+            
             <Button 
-              variant="default" 
+              variant="outline" 
               size="sm"
               className="w-full"
               onClick={() => navigate('/create-post')}

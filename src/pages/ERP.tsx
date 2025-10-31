@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Waves, Calendar, Package, Users, DollarSign, Activity, AlertTriangle, Ship, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { 
+  Calendar, Package, Users, DollarSign, Activity, AlertTriangle, 
+  Ship, Wind, ArrowLeft, Wrench 
+} from "lucide-react";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
+import { toast } from "sonner";
 
 const ERP = () => {
   const navigate = useNavigate();
@@ -19,54 +21,58 @@ const ERP = () => {
     equipmentMaintenance: 0,
     tanksFull: 0,
     tanksEmpty: 0,
-    activeCustomers: 0,
-    pendingForms: 0
+    totalRevenue: 0,
+    pendingPayments: 0
   });
 
   useEffect(() => {
-    checkDiveCenterAccess();
-    fetchStats();
+    checkVendorAccess();
   }, []);
 
-  const checkDiveCenterAccess = async () => {
+  const checkVendorAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
       return;
     }
 
+    // Check if user has vendor role
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+
+    const isVendor = roles?.some(r => (r.role as string) === 'vendor');
+    if (!isVendor) {
+      toast.error("Access denied. Vendor account required.");
+      navigate("/profile");
+      return;
+    }
+
+    // Get dive center
     const { data: centers } = await supabase
       .from("dive_centers")
       .select("*")
       .eq("owner_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!centers) {
-      navigate("/dashboard");
+      toast.error("No dive center found. Please contact support.");
+      navigate("/profile");
       return;
     }
 
     setDiveCenter(centers);
+    fetchStats(centers.id);
     setLoading(false);
   };
 
-  const fetchStats = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: centers } = await supabase
-      .from("dive_centers")
-      .select("id")
-      .eq("owner_id", user.id)
-      .single();
-
-    if (!centers) return;
-
+  const fetchStats = async (diveCenterId: string) => {
     // Fetch equipment stats
     const { data: equipment } = await supabase
       .from("dive_equipment")
       .select("status")
-      .eq("dive_center_id", centers.id);
+      .eq("dive_center_id", diveCenterId);
 
     const availableEquipment = equipment?.filter(e => e.status === "available").length || 0;
     const maintenanceEquipment = equipment?.filter(e => e.status === "maintenance").length || 0;
@@ -75,7 +81,7 @@ const ERP = () => {
     const { data: tanks } = await supabase
       .from("dive_tanks")
       .select("status")
-      .eq("dive_center_id", centers.id);
+      .eq("dive_center_id", diveCenterId);
 
     const fullTanks = tanks?.filter(t => t.status === "full").length || 0;
     const emptyTanks = tanks?.filter(t => t.status === "empty").length || 0;
@@ -85,18 +91,15 @@ const ERP = () => {
     const { data: bookings } = await supabase
       .from("dive_bookings")
       .select("*")
-      .eq("dive_center_id", centers.id)
+      .eq("dive_center_id", diveCenterId)
       .gte("dive_date", today);
 
     const todaysDives = bookings?.filter(b => b.dive_date.split('T')[0] === today).length || 0;
 
-    // Fetch customer forms
-    const { data: forms } = await supabase
-      .from("customer_forms")
-      .select("status")
-      .eq("dive_center_id", centers.id);
-
-    const pendingForms = forms?.filter(f => f.status === "pending").length || 0;
+    // Calculate revenue
+    const totalRevenue = bookings?.reduce((sum, b) => sum + Number(b.total_amount || 0), 0) || 0;
+    const pendingPayments = bookings?.filter(b => b.payment_status !== 'paid')
+      .reduce((sum, b) => sum + (Number(b.total_amount || 0) - Number(b.deposit_amount || 0)), 0) || 0;
 
     setStats({
       todaysDives,
@@ -105,44 +108,51 @@ const ERP = () => {
       equipmentMaintenance: maintenanceEquipment,
       tanksFull: fullTanks,
       tanksEmpty: emptyTanks,
-      activeCustomers: 0,
-      pendingForms
+      totalRevenue,
+      pendingPayments
     });
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <Waves className="animate-spin h-8 w-8 text-primary" />
-    </div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Activity className="animate-spin h-8 w-8 text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-20 pb-24">
+      <main className="container mx-auto px-4 pt-20 pb-12">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <Waves className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                {diveCenter?.name} ERP
-              </h1>
-              <p className="text-sm text-muted-foreground">Mission Control</p>
-            </div>
+        <div className="flex items-center gap-4 mb-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/profile")}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              {diveCenter?.name}
+            </h1>
+            <p className="text-sm text-muted-foreground">Business Management Dashboard</p>
           </div>
         </div>
 
-        {/* Stats Overview */}
+        {/* Key Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="glass-effect border-primary/20">
+          <Card className="glass-effect border-primary/20 hover:border-primary/40 transition-all">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-primary" />
-                Today's Dives
+                Today
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -151,52 +161,145 @@ const ERP = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-effect border-primary/20">
+          <Card className="glass-effect border-primary/20 hover:border-primary/40 transition-all">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Package className="w-4 h-4 text-green-500" />
+                <DollarSign className="w-4 h-4 text-green-500" />
+                Revenue
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-500">${stats.totalRevenue.toFixed(0)}</div>
+              <p className="text-xs text-muted-foreground">${stats.pendingPayments.toFixed(0)} pending</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-effect border-primary/20 hover:border-primary/40 transition-all">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Package className="w-4 h-4 text-blue-500" />
                 Equipment
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-500">{stats.equipmentAvailable}</div>
+              <div className="text-3xl font-bold text-blue-500">{stats.equipmentAvailable}</div>
               <p className="text-xs text-muted-foreground">{stats.equipmentMaintenance} in maintenance</p>
             </CardContent>
           </Card>
 
-          <Card className="glass-effect border-primary/20">
+          <Card className="glass-effect border-primary/20 hover:border-primary/40 transition-all">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Ship className="w-4 h-4 text-blue-500" />
+                <Ship className="w-4 h-4 text-cyan-500" />
                 Tanks
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-500">{stats.tanksFull}</div>
+              <div className="text-3xl font-bold text-cyan-500">{stats.tanksFull}</div>
               <p className="text-xs text-muted-foreground">{stats.tanksEmpty} need filling</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-effect border-primary/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-orange-500" />
-                Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-500">{stats.pendingForms}</div>
-              <p className="text-xs text-muted-foreground">pending forms</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Weather Widget Placeholder */}
+        {/* Quick Actions */}
         <Card className="glass-effect border-primary/20 mb-8">
+          <CardHeader>
+            <CardTitle>Management Modules</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Button 
+                onClick={() => navigate("/erp/schedule")}
+                className="h-24 flex-col gap-3 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+              >
+                <Calendar className="w-8 h-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Schedule</div>
+                  <div className="text-xs opacity-80">Bookings & Trips</div>
+                </div>
+              </Button>
+              
+              <Button 
+                onClick={() => navigate("/erp/equipment")}
+                className="h-24 flex-col gap-3"
+                variant="outline"
+              >
+                <Package className="w-8 h-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Equipment</div>
+                  <div className="text-xs opacity-80">Gear & Tanks</div>
+                </div>
+              </Button>
+              
+              <Button 
+                onClick={() => navigate("/erp/customers")}
+                className="h-24 flex-col gap-3"
+                variant="outline"
+              >
+                <Users className="w-8 h-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Customers</div>
+                  <div className="text-xs opacity-80">Forms & Records</div>
+                </div>
+              </Button>
+              
+              <Button 
+                onClick={() => navigate("/erp/finance")}
+                className="h-24 flex-col gap-3"
+                variant="outline"
+              >
+                <DollarSign className="w-8 h-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Finance</div>
+                  <div className="text-xs opacity-80">Payments & Reports</div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Alerts */}
+        {(stats.equipmentMaintenance > 0 || stats.tanksEmpty > 0) && (
+          <Card className="glass-effect border-orange-500/30 bg-orange-500/5 mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-600">
+                <AlertTriangle className="w-5 h-5" />
+                Attention Required
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {stats.equipmentMaintenance > 0 && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-background/50">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm">{stats.equipmentMaintenance} equipment items need maintenance</span>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => navigate("/erp/equipment")}>
+                    View
+                  </Button>
+                </div>
+              )}
+              {stats.tanksEmpty > 0 && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-background/50">
+                  <div className="flex items-center gap-2">
+                    <Ship className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm">{stats.tanksEmpty} tanks need refilling</span>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => navigate("/erp/equipment")}>
+                    View
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Weather Placeholder */}
+        <Card className="glass-effect border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wind className="w-5 h-5 text-primary" />
-              Weather & Conditions
+              Current Conditions
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -224,69 +327,7 @@ const ERP = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Quick Actions */}
-        <Card className="glass-effect border-primary/20 mb-8">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button 
-                onClick={() => navigate("/erp/schedule")}
-                className="h-auto py-4 flex-col gap-2"
-              >
-                <Calendar className="w-6 h-6" />
-                <span>Schedule Dive</span>
-              </Button>
-              <Button 
-                onClick={() => navigate("/erp/customers")}
-                className="h-auto py-4 flex-col gap-2"
-                variant="outline"
-              >
-                <Users className="w-6 h-6" />
-                <span>Add Customer</span>
-              </Button>
-              <Button 
-                onClick={() => navigate("/erp/equipment")}
-                className="h-auto py-4 flex-col gap-2"
-                variant="outline"
-              >
-                <Package className="w-6 h-6" />
-                <span>Equipment Log</span>
-              </Button>
-              <Button 
-                onClick={() => navigate("/erp/finance")}
-                className="h-auto py-4 flex-col gap-2"
-                variant="outline"
-              >
-                <DollarSign className="w-6 h-6" />
-                <span>Finance</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Charts Placeholder */}
-        <Card className="glass-effect border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" />
-              Analytics Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Analytics charts coming soon</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </main>
-
-      <BottomNav />
     </div>
   );
 };

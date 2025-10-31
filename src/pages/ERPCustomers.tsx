@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users, ArrowLeft, Search, AlertTriangle, CheckCircle, FileText } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const ERPCustomers = () => {
@@ -17,8 +17,30 @@ const ERPCustomers = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCustomers();
+    checkAccessAndFetch();
   }, []);
+
+  const checkAccessAndFetch = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+
+    const isVendor = roles?.some(r => (r.role as string) === 'vendor');
+    if (!isVendor) {
+      toast.error("Access denied");
+      navigate("/profile");
+      return;
+    }
+
+    fetchCustomers();
+  };
 
   const fetchCustomers = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -28,7 +50,7 @@ const ERPCustomers = () => {
       .from("dive_centers")
       .select("id")
       .eq("owner_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!centers) return;
 
@@ -218,8 +240,6 @@ const ERPCustomers = () => {
           )}
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 };

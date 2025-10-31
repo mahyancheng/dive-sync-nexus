@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, ArrowLeft, TrendingUp, Users, Calendar, FileText } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -21,8 +20,30 @@ const ERPFinance = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFinanceData();
+    checkAccessAndFetch();
   }, []);
+
+  const checkAccessAndFetch = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+
+    const isVendor = roles?.some(r => (r.role as string) === 'vendor');
+    if (!isVendor) {
+      toast.error("Access denied");
+      navigate("/profile");
+      return;
+    }
+
+    fetchFinanceData();
+  };
 
   const fetchFinanceData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -32,7 +53,7 @@ const ERPFinance = () => {
       .from("dive_centers")
       .select("id")
       .eq("owner_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!centers) return;
 
@@ -230,8 +251,6 @@ const ERPFinance = () => {
           </CardContent>
         </Card>
       </main>
-
-      <BottomNav />
     </div>
   );
 };

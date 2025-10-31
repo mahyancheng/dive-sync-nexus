@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, ArrowLeft, Plus, AlertCircle, CheckCircle, Wrench, Ship } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { AddEquipmentDialog } from "@/components/erp/AddEquipmentDialog";
 import { AddTankDialog } from "@/components/erp/AddTankDialog";
 import { GenerateMockDataButton } from "@/components/erp/GenerateMockDataButton";
@@ -20,9 +20,31 @@ const ERPEquipment = () => {
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
 
   useEffect(() => {
+    checkAccessAndFetch();
+  }, []);
+
+  const checkAccessAndFetch = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+
+    const isVendor = roles?.some(r => (r.role as string) === 'vendor');
+    if (!isVendor) {
+      toast.error("Access denied");
+      navigate("/profile");
+      return;
+    }
+
     fetchEquipment();
     fetchTanks();
-  }, []);
+  };
 
   const fetchEquipment = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -32,7 +54,7 @@ const ERPEquipment = () => {
       .from("dive_centers")
       .select("id")
       .eq("owner_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!centers) return;
     
@@ -57,7 +79,7 @@ const ERPEquipment = () => {
       .from("dive_centers")
       .select("id")
       .eq("owner_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!centers) return;
 
@@ -283,8 +305,6 @@ const ERPEquipment = () => {
           </TabsContent>
         </Tabs>
       </main>
-
-      <BottomNav />
     </div>
   );
 };
