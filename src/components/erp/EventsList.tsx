@@ -108,14 +108,29 @@ export const EventsList = ({ events, onEventClick, selectedDate }: EventsListPro
       
       <CardContent className="space-y-4">
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search events..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              setSearchQuery("");
+              setTimeFilter("all");
+              setTypeFilter("all");
+              setPriorityFilter("all");
+            }}
+            title="Clear all filters"
+          >
+            <AlertCircle className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Filters */}

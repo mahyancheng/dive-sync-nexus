@@ -8,6 +8,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 interface Event {
   id: string;
   title: string;
+  description?: string;
   date: Date;
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
@@ -93,32 +94,40 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                 key={day.toISOString()}
                 onClick={() => onDateSelect(day)}
                 className={`
-                  aspect-square p-2 rounded-lg border transition-all
+                  p-3 rounded-lg border transition-all min-h-[120px] text-left
                   ${isCurrentDay ? "border-primary bg-primary/10" : "border-border"}
                   ${isSelected ? "ring-2 ring-primary" : ""}
                   ${!isSameMonth(day, currentMonth) ? "opacity-50" : ""}
                   hover:bg-accent
                 `}
               >
-                <div className="flex flex-col h-full">
-                  <span className={`text-sm font-medium ${isCurrentDay ? "text-primary" : ""}`}>
+                <div className="flex flex-col h-full gap-2">
+                  <span className={`text-sm font-bold ${isCurrentDay ? "text-primary" : ""}`}>
                     {format(day, "d")}
                   </span>
                   
-                  {/* Event Indicators */}
+                  {/* Event List */}
                   {dayEvents.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {dayEvents.slice(0, 2).map((event) => (
+                    <div className="space-y-1 overflow-hidden">
+                      {dayEvents.slice(0, 3).map((event) => (
                         <div
                           key={event.id}
-                          className={`w-1.5 h-1.5 rounded-full ${getPriorityColor(event.priority)}`}
+                          className="text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate"
+                          style={{ borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})` }}
                           title={event.title}
-                        />
+                        >
+                          <div className="font-medium truncate">{event.title}</div>
+                          {event.description && (
+                            <div className="text-muted-foreground truncate text-[10px]">
+                              {event.description}
+                            </div>
+                          )}
+                        </div>
                       ))}
-                      {dayEvents.length > 2 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          +{dayEvents.length - 2}
-                        </span>
+                      {dayEvents.length > 3 && (
+                        <div className="text-[10px] text-muted-foreground font-medium">
+                          +{dayEvents.length - 3} more
+                        </div>
                       )}
                     </div>
                   )}
