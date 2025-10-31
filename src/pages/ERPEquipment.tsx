@@ -4,13 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, ArrowLeft, Plus, AlertCircle, CheckCircle, Wrench, Ship } from "lucide-react";
+import { Package, ArrowLeft, Plus, AlertCircle, CheckCircle, Wrench, Ship, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { AddEquipmentDialog } from "@/components/erp/AddEquipmentDialog";
+import { EditEquipmentDialog } from "@/components/erp/EditEquipmentDialog";
 import { AddTankDialog } from "@/components/erp/AddTankDialog";
+import { EditTankDialog } from "@/components/erp/EditTankDialog";
 import { GenerateMockDataButton } from "@/components/erp/GenerateMockDataButton";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const ERPEquipment = () => {
   const navigate = useNavigate();
@@ -104,6 +117,34 @@ const ERPEquipment = () => {
         return "bg-red-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  const handleDeleteEquipment = async (equipmentId: string) => {
+    const { error } = await supabase
+      .from("dive_equipment")
+      .delete()
+      .eq("id", equipmentId);
+
+    if (error) {
+      toast.error("Failed to delete equipment");
+    } else {
+      toast.success("Equipment deleted successfully");
+      fetchEquipment();
+    }
+  };
+
+  const handleDeleteTank = async (tankId: string) => {
+    const { error } = await supabase
+      .from("dive_tanks")
+      .delete()
+      .eq("id", tankId);
+
+    if (error) {
+      toast.error("Failed to delete tank");
+    } else {
+      toast.success("Tank deleted successfully");
+      fetchTanks();
     }
   };
 
@@ -204,6 +245,31 @@ const ERPEquipment = () => {
                             {item.notes}
                           </p>
                         )}
+                        <div className="flex gap-2 pt-2 border-t mt-2">
+                          <EditEquipmentDialog equipment={item} onEquipmentUpdated={fetchEquipment} />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="destructive">
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Equipment</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteEquipment(item.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -274,6 +340,31 @@ const ERPEquipment = () => {
                             </span>
                           </div>
                         )}
+                        <div className="flex gap-2 pt-2 border-t mt-2">
+                          <EditTankDialog tank={tank} onTankUpdated={fetchTanks} />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="destructive">
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Tank</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteTank(tank.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -283,8 +374,6 @@ const ERPEquipment = () => {
           </TabsContent>
         </Tabs>
       </main>
-
-      <BottomNav />
     </div>
   );
 };

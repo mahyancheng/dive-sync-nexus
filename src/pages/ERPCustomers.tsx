@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users, ArrowLeft, Search, AlertTriangle, CheckCircle, FileText } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -218,8 +217,6 @@ const ERPCustomers = () => {
           )}
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 };

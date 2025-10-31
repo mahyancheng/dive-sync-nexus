@@ -3,15 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, Clock, MapPin, Users, Ship } from "lucide-react";
+import { Calendar, ArrowLeft, Clock, MapPin, Users, Ship, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { AddBookingDialog } from "@/components/erp/AddBookingDialog";
+import { EditBookingDialog } from "@/components/erp/EditBookingDialog";
 import { GenerateMockDataButton } from "@/components/erp/GenerateMockDataButton";
 import { ConditionTracker } from "@/components/erp/ConditionTracker";
 import { FleetManager } from "@/components/erp/FleetManager";
 import { CateringManager } from "@/components/erp/CateringManager";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const ERPSchedule = () => {
   const navigate = useNavigate();
@@ -85,6 +97,20 @@ const ERPSchedule = () => {
       hour: "2-digit",
       minute: "2-digit"
     });
+  };
+
+  const handleDeleteBooking = async (bookingId: string) => {
+    const { error } = await supabase
+      .from("dive_bookings")
+      .delete()
+      .eq("id", bookingId);
+
+    if (error) {
+      toast.error("Failed to delete booking");
+    } else {
+      toast.success("Booking deleted successfully");
+      fetchBookings();
+    }
   };
 
   return (
@@ -207,9 +233,31 @@ const ERPSchedule = () => {
                       <div className="text-2xl font-bold text-primary">
                         ${booking.total_amount}
                       </div>
-                      <Button size="sm" variant="outline">
-                        View Details
-                      </Button>
+                      <div className="flex gap-2">
+                        <EditBookingDialog booking={booking} onBookingUpdated={fetchBookings} />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive">
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Booking</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this booking? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteBooking(booking.id)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -218,8 +266,6 @@ const ERPSchedule = () => {
           )}
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 };
