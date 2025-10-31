@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, ArrowLeft, TrendingUp, Users, Calendar, FileText } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import BottomNav from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -229,6 +230,8 @@ const ERPFinance = () => {
           </CardContent>
         </Card>
       </main>
+
+      <BottomNav />
     </div>
   );
 };

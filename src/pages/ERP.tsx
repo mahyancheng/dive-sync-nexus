@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Waves, Calendar, Package, Users, DollarSign, Activity, AlertTriangle, Ship, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
+import BottomNav from "@/components/BottomNav";
 
 const ERP = () => {
   const navigate = useNavigate();
@@ -284,6 +285,8 @@ const ERP = () => {
           </CardContent>
         </Card>
       </main>
+
+      <BottomNav />
     </div>
   );
 };
