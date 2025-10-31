@@ -15,6 +15,7 @@ interface Event {
   title: string;
   description?: string;
   date: Date;
+  endDate?: Date;
   time?: string;
   location?: string;
   type: "booking" | "maintenance" | "work-order" | "custom";
@@ -96,6 +97,7 @@ const ERPSchedule = () => {
           title: booking.experience?.title || booking.dive_type || "Custom Dive",
           description: `${booking.participants_count} divers - ${booking.group_name || ""}`,
           date: new Date(booking.dive_date),
+          endDate: booking.end_date ? new Date(booking.end_date) : undefined,
           location: booking.experience?.location,
           type: "booking",
           priority: booking.status === "confirmed" ? "high" : "medium",

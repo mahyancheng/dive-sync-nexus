@@ -207,6 +207,7 @@ export type Database = {
           dive_center_id: string
           dive_date: string
           dive_type: string | null
+          end_date: string | null
           experience_id: string | null
           group_name: string | null
           id: string
@@ -227,6 +228,7 @@ export type Database = {
           dive_center_id: string
           dive_date: string
           dive_type?: string | null
+          end_date?: string | null
           experience_id?: string | null
           group_name?: string | null
           id?: string
@@ -247,6 +249,7 @@ export type Database = {
           dive_center_id?: string
           dive_date?: string
           dive_type?: string | null
+          end_date?: string | null
           experience_id?: string | null
           group_name?: string | null
           id?: string

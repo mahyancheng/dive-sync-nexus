@@ -10,6 +10,7 @@ interface Event {
   title: string;
   description?: string;
   date: Date;
+  endDate?: Date;
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
   bookingId?: string;
@@ -28,9 +29,35 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  // Get events for a specific day
+  // Get events for a specific day (including multi-day events)
   const getEventsForDay = (day: Date) => {
-    return events.filter(event => isSameDay(event.date, day));
+    return events.filter(event => {
+      const eventStart = event.date;
+      const eventEnd = event.endDate || event.date;
+      return day >= eventStart && day <= eventEnd;
+    });
+  };
+
+  // Check if this is the first day of a multi-day event
+  const isEventStartDay = (event: Event, day: Date) => {
+    return isSameDay(event.date, day);
+  };
+
+  // Calculate how many days an event spans from a given day
+  const getEventSpanFromDay = (event: Event, day: Date) => {
+    if (!event.endDate) return 1;
+    
+    const eventEnd = event.endDate;
+    const monthEnd = endOfMonth(currentMonth);
+    const effectiveEnd = eventEnd < monthEnd ? eventEnd : monthEnd;
+    
+    let span = 0;
+    let currentDay = new Date(day);
+    while (currentDay <= effectiveEnd && currentDay.getDay() !== 0) {
+      span++;
+      currentDay.setDate(currentDay.getDate() + 1);
+    }
+    return span;
   };
 
   const getPriorityColor = (priority: string) => {
@@ -85,17 +112,21 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
           ))}
 
           {/* Calendar Days */}
-          {daysInMonth.map((day) => {
+          {daysInMonth.map((day, dayIndex) => {
             const dayEvents = getEventsForDay(day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const isCurrentDay = isToday(day);
+
+            // Separate single-day and multi-day events
+            const singleDayEvents = dayEvents.filter(e => isEventStartDay(e, day) && !e.endDate);
+            const multiDayEvents = dayEvents.filter(e => isEventStartDay(e, day) && e.endDate);
 
             return (
               <button
                 key={day.toISOString()}
                 onClick={() => onDateSelect(day)}
                 className={`
-                  p-3 rounded-lg border transition-all min-h-[120px] text-left
+                  relative p-3 rounded-lg border transition-all min-h-[120px] text-left
                   ${isCurrentDay ? "border-primary bg-primary/10" : "border-border"}
                   ${isSelected ? "ring-2 ring-primary" : ""}
                   ${!isSameMonth(day, currentMonth) ? "opacity-50" : ""}
@@ -107,10 +138,34 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                     {format(day, "d")}
                   </span>
                   
-                  {/* Event List */}
-                  {dayEvents.length > 0 && (
-                    <div className="space-y-1 overflow-hidden">
-                      {dayEvents.slice(0, 3).map((event) => (
+                  {/* Multi-day Events (spanning) */}
+                  {multiDayEvents.map((event) => {
+                    const span = getEventSpanFromDay(event, day);
+                    return (
+                      <div
+                        key={event.id}
+                        className="absolute text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate z-10"
+                        style={{ 
+                          borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})`,
+                          width: `calc(${span * 100}% + ${(span - 1) * 8}px)`,
+                          top: '2.5rem'
+                        }}
+                        title={`${event.title} (${format(event.date, 'MMM d')} - ${format(event.endDate!, 'MMM d')})`}
+                      >
+                        <div className="font-medium truncate">{event.title}</div>
+                        {event.description && (
+                          <div className="text-muted-foreground truncate text-[10px]">
+                            {event.description}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Single-day Events */}
+                  {singleDayEvents.length > 0 && (
+                    <div className="space-y-1 overflow-hidden mt-8">
+                      {singleDayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
                           className="text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate"
@@ -125,9 +180,9 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                           )}
                         </div>
                       ))}
-                      {dayEvents.length > 3 && (
+                      {singleDayEvents.length > 2 && (
                         <div className="text-[10px] text-muted-foreground font-medium">
-                          +{dayEvents.length - 3} more
+                          +{singleDayEvents.length - 2} more
                         </div>
                       )}
                     </div>
