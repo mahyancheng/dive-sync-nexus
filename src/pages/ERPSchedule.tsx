@@ -7,6 +7,8 @@ import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
 import { CalendarView } from "@/components/erp/CalendarView";
 import { EventsList } from "@/components/erp/EventsList";
+import { EventDetailDialog } from "@/components/erp/EventDetailDialog";
+import { CreateEventDialog } from "@/components/erp/CreateEventDialog";
 
 interface Event {
   id: string;
@@ -17,6 +19,7 @@ interface Event {
   location?: string;
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
+  bookingId?: string;
 }
 
 const ERPSchedule = () => {
@@ -25,6 +28,8 @@ const ERPSchedule = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventDetailOpen, setEventDetailOpen] = useState(false);
 
   useEffect(() => {
     checkAccessAndFetch();
@@ -93,7 +98,8 @@ const ERPSchedule = () => {
           date: new Date(booking.dive_date),
           location: booking.experience?.location,
           type: "booking",
-          priority: booking.status === "confirmed" ? "high" : "medium"
+          priority: booking.status === "confirmed" ? "high" : "medium",
+          bookingId: booking.id
         });
       });
     }
@@ -119,7 +125,11 @@ const ERPSchedule = () => {
   };
 
   const handleEventClick = (eventId: string) => {
-    toast.info("Event details coming soon");
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      setSelectedEvent(event);
+      setEventDetailOpen(true);
+    }
   };
 
   return (
@@ -144,10 +154,12 @@ const ERPSchedule = () => {
               <p className="text-sm text-muted-foreground">View and manage all scheduled events</p>
             </div>
           </div>
-          <Button className="gap-2">
-            <Plus className="w-4 h-4" />
-            New Event
-          </Button>
+          {diveCenterId && (
+            <CreateEventDialog 
+              diveCenterId={diveCenterId} 
+              onEventCreated={fetchEvents}
+            />
+          )}
         </div>
 
         {loading ? (
@@ -174,6 +186,17 @@ const ERPSchedule = () => {
               />
             </div>
           </div>
+        )}
+
+        {/* Event Detail Dialog */}
+        {diveCenterId && (
+          <EventDetailDialog
+            event={selectedEvent}
+            diveCenterId={diveCenterId}
+            open={eventDetailOpen}
+            onOpenChange={setEventDetailOpen}
+            onUpdated={fetchEvents}
+          />
         )}
       </main>
     </div>

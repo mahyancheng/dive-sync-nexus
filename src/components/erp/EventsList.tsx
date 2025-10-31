@@ -16,6 +16,7 @@ interface Event {
   location?: string;
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
+  bookingId?: string;
 }
 
 interface EventsListProps {

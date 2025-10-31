@@ -12,6 +12,7 @@ interface Event {
   date: Date;
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
+  bookingId?: string;
 }
 
 interface CalendarViewProps {
