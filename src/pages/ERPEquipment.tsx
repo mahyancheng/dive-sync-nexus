@@ -166,6 +166,16 @@ const ERPEquipment = () => {
           </TabsList>
 
           <TabsContent value="equipment">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Dive Equipment Inventory</h2>
+              {diveCenterId && (
+                <AddEquipmentDialog 
+                  diveCenterId={diveCenterId} 
+                  onEquipmentAdded={fetchEquipment}
+                />
+              )}
+            </div>
+            
             {loading ? (
               <Card className="glass-effect">
                 <CardContent className="p-8 text-center text-muted-foreground">
@@ -176,19 +186,7 @@ const ERPEquipment = () => {
               <Card className="glass-effect">
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No equipment found</p>
-                  {diveCenterId && (
-                    <AddEquipmentDialog 
-                      diveCenterId={diveCenterId} 
-                      onEquipmentAdded={fetchEquipment}
-                      trigger={
-                        <Button className="mt-4" variant="outline">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Your First Equipment
-                        </Button>
-                      }
-                    />
-                  )}
+                  <p>No equipment found. Add your first equipment item to get started.</p>
                 </CardContent>
               </Card>
             ) : (
@@ -235,6 +233,16 @@ const ERPEquipment = () => {
           </TabsContent>
 
           <TabsContent value="tanks">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Gas Tanks Inventory</h2>
+              {diveCenterId && (
+                <AddTankDialog 
+                  diveCenterId={diveCenterId} 
+                  onTankAdded={fetchTanks}
+                />
+              )}
+            </div>
+            
             {loading ? (
               <Card className="glass-effect">
                 <CardContent className="p-8 text-center text-muted-foreground">
@@ -245,19 +253,7 @@ const ERPEquipment = () => {
               <Card className="glass-effect">
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Ship className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No tanks found</p>
-                  {diveCenterId && (
-                    <AddTankDialog 
-                      diveCenterId={diveCenterId} 
-                      onTankAdded={fetchTanks}
-                      trigger={
-                        <Button className="mt-4" variant="outline">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Your First Tank
-                        </Button>
-                      }
-                    />
-                  )}
+                  <p>No tanks found. Add your first gas tank to get started.</p>
                 </CardContent>
               </Card>
             ) : (
