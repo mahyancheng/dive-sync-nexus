@@ -10,7 +10,6 @@ interface Event {
   title: string;
   description?: string;
   date: Date;
-  endDate?: Date;
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
   bookingId?: string;
@@ -29,41 +28,9 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  // Get events for a specific day (including multi-day events)
+  // Get events for a specific day
   const getEventsForDay = (day: Date) => {
-    return events.filter(event => {
-      const eventStart = event.date;
-      const eventEnd = event.endDate || event.date;
-      return day >= eventStart && day <= eventEnd;
-    });
-  };
-
-  // Check if this is the first day of a multi-day event
-  const isEventStartDay = (event: Event, day: Date) => {
-    return isSameDay(event.date, day);
-  };
-
-  // Calculate how many days an event spans from a given day
-  const getEventSpanFromDay = (event: Event, day: Date) => {
-    if (!event.endDate) return 1;
-    
-    const eventEnd = event.endDate;
-    const monthEnd = endOfMonth(currentMonth);
-    const effectiveEnd = eventEnd < monthEnd ? eventEnd : monthEnd;
-    
-    // Calculate days until end of week (Saturday) or event end
-    let span = 0;
-    let currentDay = new Date(day);
-    const startDayOfWeek = currentDay.getDay();
-    const daysUntilSaturday = 6 - startDayOfWeek;
-    
-    while (currentDay <= effectiveEnd && span <= daysUntilSaturday) {
-      span++;
-      currentDay.setDate(currentDay.getDate() + 1);
-      if (currentDay > effectiveEnd) break;
-    }
-    
-    return Math.max(1, span);
+    return events.filter(event => isSameDay(event.date, day));
   };
 
   const getPriorityColor = (priority: string) => {
@@ -118,20 +85,17 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
           ))}
 
           {/* Calendar Days */}
-          {daysInMonth.map((day, dayIndex) => {
+          {daysInMonth.map((day) => {
             const dayEvents = getEventsForDay(day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const isCurrentDay = isToday(day);
-
-            // Only show events on their start day to avoid duplicates
-            const eventsToShow = dayEvents.filter(e => isEventStartDay(e, day));
 
             return (
               <button
                 key={day.toISOString()}
                 onClick={() => onDateSelect(day)}
                 className={`
-                  relative p-3 rounded-lg border transition-all min-h-[120px] text-left overflow-visible
+                  p-3 rounded-lg border transition-all min-h-[120px] text-left
                   ${isCurrentDay ? "border-primary bg-primary/10" : "border-border"}
                   ${isSelected ? "ring-2 ring-primary" : ""}
                   ${!isSameMonth(day, currentMonth) ? "opacity-50" : ""}
@@ -144,43 +108,26 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                   </span>
                   
                   {/* Event List */}
-                  {eventsToShow.length > 0 && (
-                    <div className="space-y-1 overflow-visible">
-                      {eventsToShow.slice(0, 3).map((event, idx) => {
-                        const span = event.endDate ? getEventSpanFromDay(event, day) : 1;
-                        const isMultiDay = event.endDate && span > 1;
-                        
-                        return (
-                          <div
-                            key={event.id}
-                            className={`text-xs p-1.5 rounded border-l-2 border-current truncate z-10 ${
-                              isMultiDay ? 'absolute bg-primary/20 backdrop-blur-sm' : 'bg-accent/50'
-                            }`}
-                            style={isMultiDay ? { 
-                              borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})`,
-                              width: `calc(${span * 100}% + ${(span - 1) * 8}px)`,
-                              top: `${2.5 + idx * 1.8}rem`,
-                              left: '0.75rem'
-                            } : {
-                              borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})`
-                            }}
-                            title={event.endDate 
-                              ? `${event.title} (${format(event.date, 'MMM d')} - ${format(event.endDate, 'MMM d')})`
-                              : event.title
-                            }
-                          >
-                            <div className="font-medium truncate">{event.title}</div>
-                            {event.description && (
-                              <div className="text-muted-foreground truncate text-[10px]">
-                                {event.description}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {eventsToShow.length > 3 && (
-                        <div className="text-[10px] text-muted-foreground font-medium mt-16">
-                          +{eventsToShow.length - 3} more
+                  {dayEvents.length > 0 && (
+                    <div className="space-y-1 overflow-hidden">
+                      {dayEvents.slice(0, 3).map((event) => (
+                        <div
+                          key={event.id}
+                          className="text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate"
+                          style={{ borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})` }}
+                          title={event.title}
+                        >
+                          <div className="font-medium truncate">{event.title}</div>
+                          {event.description && (
+                            <div className="text-muted-foreground truncate text-[10px]">
+                              {event.description}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <div className="text-[10px] text-muted-foreground font-medium">
+                          +{dayEvents.length - 3} more
                         </div>
                       )}
                     </div>

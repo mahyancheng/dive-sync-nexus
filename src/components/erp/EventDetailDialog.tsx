@@ -14,7 +14,6 @@ interface Event {
   title: string;
   description?: string;
   date: Date;
-  endDate?: Date;
   time?: string;
   location?: string;
   type: "booking" | "maintenance" | "work-order" | "custom";
@@ -302,10 +301,7 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span>
-                  {format(event.date, "PPP")}
-                  {event.endDate && ` - ${format(event.endDate, "PPP")}`}
-                </span>
+                <span>{format(event.date, "PPP")}</span>
               </div>
               {event.time && (
                 <div className="flex items-center gap-2">

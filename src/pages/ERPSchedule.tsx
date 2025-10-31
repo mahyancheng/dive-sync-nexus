@@ -9,14 +9,12 @@ import { CalendarView } from "@/components/erp/CalendarView";
 import { EventsList } from "@/components/erp/EventsList";
 import { EventDetailDialog } from "@/components/erp/EventDetailDialog";
 import { CreateEventDialog } from "@/components/erp/CreateEventDialog";
-import { ConsolidateEventsButton } from "@/components/erp/ConsolidateEventsButton";
 
 interface Event {
   id: string;
   title: string;
   description?: string;
   date: Date;
-  endDate?: Date;
   time?: string;
   location?: string;
   type: "booking" | "maintenance" | "work-order" | "custom";
@@ -98,7 +96,6 @@ const ERPSchedule = () => {
           title: booking.experience?.title || booking.dive_type || "Custom Dive",
           description: `${booking.participants_count} divers - ${booking.group_name || ""}`,
           date: new Date(booking.dive_date),
-          endDate: booking.end_date ? new Date(booking.end_date) : undefined,
           location: booking.experience?.location,
           type: "booking",
           priority: booking.status === "confirmed" ? "high" : "medium",
@@ -157,20 +154,12 @@ const ERPSchedule = () => {
               <p className="text-sm text-muted-foreground">View and manage all scheduled events</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {diveCenterId && (
-              <>
-                <ConsolidateEventsButton 
-                  diveCenterId={diveCenterId}
-                  onConsolidated={fetchEvents}
-                />
-                <CreateEventDialog 
-                  diveCenterId={diveCenterId} 
-                  onEventCreated={fetchEvents}
-                />
-              </>
-            )}
-          </div>
+          {diveCenterId && (
+            <CreateEventDialog 
+              diveCenterId={diveCenterId} 
+              onEventCreated={fetchEvents}
+            />
+          )}
         </div>
 
         {loading ? (

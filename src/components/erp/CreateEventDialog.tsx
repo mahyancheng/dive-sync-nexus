@@ -39,39 +39,45 @@ export const CreateEventDialog = ({ diveCenterId, onEventCreated }: CreateEventD
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Create single booking with date range
+      // Create booking for each day in the date range
       const startDate = new Date(formData.start_date);
-      const endDate = formData.end_date ? new Date(formData.end_date) : null;
+      const endDate = new Date(formData.end_date || formData.start_date);
       
-      const diveDateTime = new Date(startDate);
-      if (formData.time) {
-        const [hours, minutes] = formData.time.split(':');
-        diveDateTime.setHours(parseInt(hours), parseInt(minutes));
-      }
+      const bookingsToCreate = [];
+      let currentDate = new Date(startDate);
+      
+      while (currentDate <= endDate) {
+        const diveDateTime = new Date(currentDate);
+        if (formData.time) {
+          const [hours, minutes] = formData.time.split(':');
+          diveDateTime.setHours(parseInt(hours), parseInt(minutes));
+        }
 
-      const bookingData = {
-        dive_center_id: diveCenterId,
-        customer_id: user.id,
-        dive_date: diveDateTime.toISOString(),
-        end_date: endDate ? endDate.toISOString() : null,
-        dive_type: formData.dive_type,
-        group_name: formData.group_name || formData.title,
-        booking_date: new Date().toISOString(),
-        participants_count: formData.participants_count,
-        total_amount: 0,
-        payment_status: "unpaid",
-        status: formData.priority === "high" ? "confirmed" : "pending",
-        notes: formData.description
-      };
+        bookingsToCreate.push({
+          dive_center_id: diveCenterId,
+          customer_id: user.id,
+          dive_date: diveDateTime.toISOString(),
+          dive_type: formData.dive_type,
+          group_name: formData.group_name || formData.title,
+          booking_date: new Date().toISOString(),
+          participants_count: formData.participants_count,
+          total_amount: 0,
+          payment_status: "unpaid",
+          status: formData.priority === "high" ? "confirmed" : "pending",
+          notes: formData.description
+        });
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
 
       const { error } = await supabase
         .from("dive_bookings")
-        .insert(bookingData);
+        .insert(bookingsToCreate);
 
       if (error) throw error;
 
-      const isMultiDay = endDate && endDate > startDate;
-      toast.success(`Event created successfully${isMultiDay ? ' (multi-day)' : ''}`);
+      const dayCount = bookingsToCreate.length;
+      toast.success(`Event created successfully${dayCount > 1 ? ` across ${dayCount} days` : ''}`);
       
       setOpen(false);
       setFormData({

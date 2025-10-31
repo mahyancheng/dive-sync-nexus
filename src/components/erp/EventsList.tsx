@@ -12,7 +12,6 @@ interface Event {
   title: string;
   description?: string;
   date: Date;
-  endDate?: Date;
   time?: string;
   location?: string;
   type: "booking" | "maintenance" | "work-order" | "custom";
@@ -200,11 +199,10 @@ export const EventsList = ({ events, onEventClick, selectedDate }: EventsListPro
                   </p>
                 )}
                 
-                 <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {format(event.date, "MMM d, yyyy")}
-                    {event.endDate && ` - ${format(event.endDate, "MMM d, yyyy")}`}
                     {event.time && ` ${event.time}`}
                   </div>
                   {event.location && (
