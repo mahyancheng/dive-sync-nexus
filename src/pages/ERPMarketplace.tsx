@@ -9,10 +9,8 @@ import { Store, ArrowLeft, Search, Package, Waves, Plus, Edit, Trash2 } from "lu
 import Navbar from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import AddProductDialog from "@/components/erp/AddProductDialog";
+import AddExperienceDialog from "@/components/erp/AddExperienceDialog";
 
 const ERPMarketplace = () => {
   const navigate = useNavigate();
@@ -156,17 +154,33 @@ const ERPMarketplace = () => {
           </div>
         </div>
 
+        <div className="flex items-center justify-between mb-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="products" className="flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Products ({products.length})
+              </TabsTrigger>
+              <TabsTrigger value="experiences" className="flex items-center gap-2">
+                <Waves className="w-4 h-4" />
+                Experiences ({experiences.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="ml-4">
+            {activeTab === "products" ? (
+              <AddProductDialog onProductAdded={() => checkAccessAndFetch()} />
+            ) : (
+              <AddExperienceDialog 
+                onExperienceAdded={() => checkAccessAndFetch()} 
+                diveCenterId={diveCenterId}
+              />
+            )}
+          </div>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="products" className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Products ({products.length})
-            </TabsTrigger>
-            <TabsTrigger value="experiences" className="flex items-center gap-2">
-              <Waves className="w-4 h-4" />
-              Experiences ({experiences.length})
-            </TabsTrigger>
-          </TabsList>
 
           <TabsContent value="products" className="space-y-4">
             {loading ? (
