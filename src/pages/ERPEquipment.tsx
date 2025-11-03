@@ -82,7 +82,9 @@ const ERPEquipment = () => {
     equipment.forEach(item => {
       items.push({
         id: `equipment-${item.id}`,
-        name: `${item.equipment_type}${item.size ? ` (${item.size})` : ''}`,
+        name: item.equipment_type,
+        equipment_type: item.equipment_type,
+        size: item.size || undefined,
         asset_code: `EQ-${item.id.substring(0, 6)}`,
         category: "equipment",
         status: item.status || "available",
@@ -96,7 +98,9 @@ const ERPEquipment = () => {
     tanks.forEach(tank => {
       items.push({
         id: `tank-${tank.id}`,
-        name: `Tank ${tank.tank_number} (${tank.gas_type})`,
+        name: `Tank ${tank.tank_number}`,
+        equipment_type: `${tank.gas_type} Tank`,
+        size: `${tank.pressure_bar || 0}bar`,
         asset_code: `TANK-${tank.tank_number}`,
         category: "tank",
         status: tank.status === "full" ? "available" : tank.status === "empty" ? "maintenance" : tank.status,
@@ -111,6 +115,8 @@ const ERPEquipment = () => {
       items.push({
         id: `boat-${boat.id}`,
         name: boat.name,
+        equipment_type: "Boat",
+        size: `${boat.max_capacity} pax`,
         asset_code: `BOAT-${boat.id.substring(0, 6)}`,
         category: "boat",
         status: boat.status || "available",

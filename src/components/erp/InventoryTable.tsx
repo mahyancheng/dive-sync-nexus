@@ -12,6 +12,8 @@ export interface InventoryItem {
   name: string;
   asset_code: string;
   category: "boat" | "equipment" | "tank" | "other";
+  equipment_type?: string;
+  size?: string;
   status: "available" | "maintenance" | "rented" | "disposed" | "lost" | "checked-out";
   condition: "excellent" | "good" | "fair" | "poor";
   current_value: number;
@@ -86,7 +88,6 @@ export const InventoryTable = ({ items, onViewHistory, onEditItem }: InventoryTa
             <SelectItem value="boat">Boats</SelectItem>
             <SelectItem value="equipment">Equipment</SelectItem>
             <SelectItem value="tank">Tanks</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -96,7 +97,8 @@ export const InventoryTable = ({ items, onViewHistory, onEditItem }: InventoryTa
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Item</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Size</TableHead>
               <TableHead>Asset Code</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Location</TableHead>
@@ -110,14 +112,21 @@ export const InventoryTable = ({ items, onViewHistory, onEditItem }: InventoryTa
           <TableBody>
             {filteredItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                   No items found
                 </TableCell>
               </TableRow>
             ) : (
               filteredItems.map((item) => (
                 <TableRow key={item.id} className="hover:bg-accent/50">
-                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell className="font-medium">{item.equipment_type || item.name}</TableCell>
+                  <TableCell>
+                    {item.size ? (
+                      <Badge variant="outline">{item.size}</Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <code className="text-xs bg-muted px-2 py-1 rounded">
                       {item.asset_code}

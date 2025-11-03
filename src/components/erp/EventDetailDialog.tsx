@@ -6,9 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, Clock, Users, Package, Wand2, X, CheckCircle2, Link2, Copy, RotateCcw } from "lucide-react";
-import { format } from "date-fns";
+import { Calendar, MapPin, Clock, Users, Package, Wand2, X, CheckCircle2, Link2, Copy, RotateCcw, AlertTriangle } from "lucide-react";
+import { format, differenceInDays } from "date-fns";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Event {
   id: string;
@@ -48,6 +49,7 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
   const [autoAssignMethod, setAutoAssignMethod] = useState<"fifo" | "usage">("fifo");
   const [bookingStatus, setBookingStatus] = useState<string>("");
   const [equipmentRequests, setEquipmentRequests] = useState<any[]>([]);
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
 
   useEffect(() => {
     if (open && event) {
@@ -64,12 +66,13 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
     try {
       const { data } = await supabase
         .from("dive_bookings")
-        .select("status")
+        .select("status, dive_date, end_date, participants_count")
         .eq("id", event.bookingId)
         .single();
       
       if (data) {
         setBookingStatus(data.status);
+        setBookingDetails(data);
       }
     } catch (error) {
       console.error("Failed to fetch booking status:", error);
@@ -101,6 +104,73 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
     navigator.clipboard.writeText(link);
     toast.success("Equipment request link copied to clipboard!");
   };
+
+  // Calculate equipment needs vs availability
+  const calculateEquipmentSummary = () => {
+    const needed: Record<string, number> = {
+      BCD: 0,
+      Fins: 0,
+      Regulator: 0,
+      Mask: 0,
+      Wetsuit: 0
+    };
+
+    // Sum up all equipment requests
+    equipmentRequests.forEach(req => {
+      if (req.bcd_needed) needed.BCD++;
+      if (req.fins_needed) needed.Fins++;
+      if (req.regulator_needed) needed.Regulator++;
+      if (req.mask_needed) needed.Mask++;
+      if (req.wetsuit_needed) needed.Wetsuit++;
+    });
+
+    // Count available equipment by type
+    const available: Record<string, number> = {
+      BCD: 0,
+      Fins: 0,
+      Regulator: 0,
+      Mask: 0,
+      Wetsuit: 0
+    };
+
+    availableInventory.forEach(item => {
+      if (item.type === "equipment") {
+        const name = item.name.toLowerCase();
+        if (name.includes("bcd")) available.BCD++;
+        else if (name.includes("fin")) available.Fins++;
+        else if (name.includes("regulator")) available.Regulator++;
+        else if (name.includes("mask")) available.Mask++;
+        else if (name.includes("wetsuit")) available.Wetsuit++;
+      }
+    });
+
+    // Count assigned equipment
+    const assigned: Record<string, number> = {
+      BCD: 0,
+      Fins: 0,
+      Regulator: 0,
+      Mask: 0,
+      Wetsuit: 0
+    };
+
+    assignedInventory.forEach(item => {
+      if (item.type === "equipment") {
+        const name = item.name.toLowerCase();
+        if (name.includes("bcd")) assigned.BCD++;
+        else if (name.includes("fin")) assigned.Fins++;
+        else if (name.includes("regulator")) assigned.Regulator++;
+        else if (name.includes("mask")) assigned.Mask++;
+        else if (name.includes("wetsuit")) assigned.Wetsuit++;
+      }
+    });
+
+    return { needed, available, assigned };
+  };
+
+  const equipmentSummary = calculateEquipmentSummary();
+  const hasInsufficientEquipment = Object.keys(equipmentSummary.needed).some(
+    type => equipmentSummary.needed[type] > (equipmentSummary.available[type] + equipmentSummary.assigned[type])
+  );
 
   const fetchInventory = async () => {
     try {
@@ -402,6 +472,17 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span>{format(event.date, "PPP")}</span>
               </div>
+              {bookingDetails?.end_date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-semibold">
+                    {differenceInDays(new Date(bookingDetails.end_date), new Date(bookingDetails.dive_date)) + 1} days
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    (until {format(new Date(bookingDetails.end_date), "MMM d")})
+                  </span>
+                </div>
+              )}
               {event.time && (
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-muted-foreground" />
@@ -412,6 +493,12 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-muted-foreground" />
                   <span>{event.location}</span>
+                </div>
+              )}
+              {bookingDetails?.participants_count && (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <span>{bookingDetails.participants_count} participants</span>
                 </div>
               )}
             </div>
@@ -558,6 +645,50 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
                     </Button>
                   </div>
                 </div>
+
+                {/* Equipment Summary */}
+                {equipmentRequests.length > 0 && (
+                  <div className="mb-4">
+                    {hasInsufficientEquipment && (
+                      <Alert className="mb-3 border-destructive/50 bg-destructive/10">
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                        <AlertDescription className="text-sm">
+                          <strong>Insufficient Equipment:</strong> Some requested equipment is not available in sufficient quantities.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <Card className="p-4 bg-muted/30">
+                      <h5 className="text-sm font-semibold mb-3">Equipment Status</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {Object.entries(equipmentSummary.needed).map(([type, needed]) => {
+                          const available = equipmentSummary.available[type];
+                          const assigned = equipmentSummary.assigned[type];
+                          const total = available + assigned;
+                          const sufficient = needed <= total;
+                          
+                          if (needed === 0) return null;
+                          
+                          return (
+                            <div key={type} className={`p-2 rounded-lg border ${!sufficient ? 'bg-destructive/10 border-destructive/30' : 'bg-card'}`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium">{type}</span>
+                                {!sufficient && <AlertTriangle className="w-3 h-3 text-destructive" />}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                <div>Needed: <strong>{needed}</strong></div>
+                                <div>Assigned: <strong>{assigned}</strong></div>
+                                <div>Available: <strong>{available}</strong></div>
+                                <div className={!sufficient ? 'text-destructive font-semibold' : 'text-success'}>
+                                  {sufficient ? '✓ Sufficient' : `✗ Short by ${needed - total}`}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  </div>
+                )}
 
                 {/* Assigned Inventory */}
                 <div className="mb-4">
