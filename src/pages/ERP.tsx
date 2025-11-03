@@ -232,14 +232,14 @@ const ERP = () => {
               </Button>
               
               <Button 
-                onClick={() => navigate("/erp/customers")}
+                onClick={() => navigate("/erp/marketplace")}
                 className="h-24 flex-col gap-3"
                 variant="outline"
               >
                 <Users className="w-8 h-8" />
                 <div className="text-center">
-                  <div className="font-semibold">Customers</div>
-                  <div className="text-xs opacity-80">Forms & Records</div>
+                  <div className="font-semibold">Marketplace</div>
+                  <div className="text-xs opacity-80">Products & Trips</div>
                 </div>
               </Button>
               
