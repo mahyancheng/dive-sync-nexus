@@ -649,6 +649,71 @@ export type Database = {
           },
         ]
       }
+      equipment_requests: {
+        Row: {
+          bcd_needed: boolean
+          bcd_size: string | null
+          booking_id: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          fins_needed: boolean
+          fins_size: string | null
+          id: string
+          mask_needed: boolean
+          notes: string | null
+          regulator_needed: boolean
+          status: string
+          updated_at: string
+          wetsuit_needed: boolean
+          wetsuit_size: string | null
+        }
+        Insert: {
+          bcd_needed?: boolean
+          bcd_size?: string | null
+          booking_id: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          fins_needed?: boolean
+          fins_size?: string | null
+          id?: string
+          mask_needed?: boolean
+          notes?: string | null
+          regulator_needed?: boolean
+          status?: string
+          updated_at?: string
+          wetsuit_needed?: boolean
+          wetsuit_size?: string | null
+        }
+        Update: {
+          bcd_needed?: boolean
+          bcd_size?: string | null
+          booking_id?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          fins_needed?: boolean
+          fins_size?: string | null
+          id?: string
+          mask_needed?: boolean
+          notes?: string | null
+          regulator_needed?: boolean
+          status?: string
+          updated_at?: string
+          wetsuit_needed?: boolean
+          wetsuit_size?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_requests_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dive_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experiences: {
         Row: {
           badges: string[] | null

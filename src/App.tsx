@@ -22,6 +22,7 @@ import ERPSchedule from "./pages/ERPSchedule";
 import ERPEquipment from "./pages/ERPEquipment";
 import ERPCustomers from "./pages/ERPCustomers";
 import ERPFinance from "./pages/ERPFinance";
+import EquipmentRequest from "./pages/EquipmentRequest";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
           <Route path="/erp/equipment" element={<ERPEquipment />} />
           <Route path="/erp/customers" element={<ERPCustomers />} />
           <Route path="/erp/finance" element={<ERPFinance />} />
+          <Route path="/equipment-request/:bookingId" element={<EquipmentRequest />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

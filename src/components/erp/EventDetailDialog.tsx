@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, Clock, Users, Package, Wand2, X, CheckCircle2 } from "lucide-react";
+import { Calendar, MapPin, Clock, Users, Package, Wand2, X, CheckCircle2, Link2, Copy } from "lucide-react";
 import { format } from "date-fns";
+import { Card } from "@/components/ui/card";
 
 interface Event {
   id: string;
@@ -46,12 +47,14 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
   const [assignedInventory, setAssignedInventory] = useState<InventoryItem[]>([]);
   const [autoAssignMethod, setAutoAssignMethod] = useState<"fifo" | "usage">("fifo");
   const [bookingStatus, setBookingStatus] = useState<string>("");
+  const [equipmentRequests, setEquipmentRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (open && event) {
       fetchInventory();
       fetchAssignedInventory();
       fetchBookingStatus();
+      fetchEquipmentRequests();
     }
   }, [open, event, diveCenterId]);
 
@@ -71,6 +74,32 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
     } catch (error) {
       console.error("Failed to fetch booking status:", error);
     }
+  };
+
+  const fetchEquipmentRequests = async () => {
+    if (!event?.bookingId) return;
+    
+    try {
+      const { data } = await supabase
+        .from("equipment_requests")
+        .select("*")
+        .eq("booking_id", event.bookingId)
+        .order("created_at", { ascending: false });
+      
+      if (data) {
+        setEquipmentRequests(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch equipment requests:", error);
+    }
+  };
+
+  const copyEquipmentRequestLink = () => {
+    if (!event?.bookingId) return;
+    
+    const link = `${window.location.origin}/equipment-request/${event.bookingId}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Equipment request link copied to clipboard!");
   };
 
   const fetchInventory = async () => {
@@ -365,6 +394,94 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
               )}
             </div>
           </div>
+
+          {/* Equipment Request Link */}
+          {event.type === "booking" && event.bookingId && (
+            <div className="border-t pt-4">
+              <Card className="p-4 bg-muted/50">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Link2 className="w-4 h-4 text-primary" />
+                      <h5 className="font-semibold text-sm">Equipment Request Link</h5>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Share this link with clients so they can submit their equipment needs
+                    </p>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={copyEquipmentRequestLink}
+                      className="gap-2"
+                    >
+                      <Copy className="w-3 h-3" />
+                      Copy Link
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Equipment Requests */}
+          {event.type === "booking" && event.bookingId && equipmentRequests.length > 0 && (
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-primary" />
+                <h5 className="font-semibold text-sm">Client Equipment Requests ({equipmentRequests.length})</h5>
+              </div>
+              <div className="space-y-3">
+                {equipmentRequests.map((req) => (
+                  <Card key={req.id} className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">{req.customer_name}</p>
+                          {req.customer_email && (
+                            <p className="text-xs text-muted-foreground">{req.customer_email}</p>
+                          )}
+                        </div>
+                        <Badge variant={req.status === "pending" ? "secondary" : "default"}>
+                          {req.status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-sm space-y-1">
+                        <p className="font-medium text-muted-foreground">Requested Equipment:</p>
+                        <div className="grid grid-cols-2 gap-1 text-xs">
+                          {req.bcd_needed && (
+                            <div>• BCD ({req.bcd_size || 'Size not specified'})</div>
+                          )}
+                          {req.fins_needed && (
+                            <div>• Fins ({req.fins_size || 'Size not specified'})</div>
+                          )}
+                          {req.regulator_needed && (
+                            <div>• Regulator</div>
+                          )}
+                          {req.mask_needed && (
+                            <div>• Mask</div>
+                          )}
+                          {req.wetsuit_needed && (
+                            <div>• Wetsuit ({req.wetsuit_size || 'Size not specified'})</div>
+                          )}
+                          {!req.bcd_needed && !req.fins_needed && !req.regulator_needed && !req.mask_needed && !req.wetsuit_needed && (
+                            <div className="col-span-2 text-muted-foreground">No equipment needed</div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {req.notes && (
+                        <div className="text-xs">
+                          <p className="font-medium text-muted-foreground">Notes:</p>
+                          <p className="text-muted-foreground">{req.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Mark as Finished Button */}
           {event.type === "booking" && event.bookingId && bookingStatus !== "completed" && (
