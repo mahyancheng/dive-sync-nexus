@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import AddProductDialog from "@/components/erp/AddProductDialog";
 import AddExperienceDialog from "@/components/erp/AddExperienceDialog";
+import EditProductDialog from "@/components/erp/EditProductDialog";
+import EditExperienceDialog from "@/components/erp/EditExperienceDialog";
 
 const ERPMarketplace = () => {
   const navigate = useNavigate();
@@ -20,6 +22,10 @@ const ERPMarketplace = () => {
   const [loading, setLoading] = useState(true);
   const [diveCenterId, setDiveCenterId] = useState<string>("");
   const [activeTab, setActiveTab] = useState("products");
+  const [editProductId, setEditProductId] = useState<string>("");
+  const [editProductOpen, setEditProductOpen] = useState(false);
+  const [editExperienceId, setEditExperienceId] = useState<string>("");
+  const [editExperienceOpen, setEditExperienceOpen] = useState(false);
 
   useEffect(() => {
     checkAccessAndFetch();
@@ -214,7 +220,14 @@ const ERPMarketplace = () => {
                             <p className="text-sm text-muted-foreground">{product.brand}</p>
                           </div>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setEditProductId(product.id);
+                                setEditProductOpen(true);
+                              }}
+                            >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
@@ -283,7 +296,14 @@ const ERPMarketplace = () => {
                             <p className="text-sm text-muted-foreground">{experience.location}</p>
                           </div>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setEditExperienceId(experience.id);
+                                setEditExperienceOpen(true);
+                              }}
+                            >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
@@ -322,6 +342,20 @@ const ERPMarketplace = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        <EditProductDialog
+          productId={editProductId}
+          open={editProductOpen}
+          onOpenChange={setEditProductOpen}
+          onProductUpdated={() => checkAccessAndFetch()}
+        />
+
+        <EditExperienceDialog
+          experienceId={editExperienceId}
+          open={editExperienceOpen}
+          onOpenChange={setEditExperienceOpen}
+          onExperienceUpdated={() => checkAccessAndFetch()}
+        />
       </main>
     </div>
   );

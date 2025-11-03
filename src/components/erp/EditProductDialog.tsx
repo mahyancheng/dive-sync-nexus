@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,14 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
 
-interface AddProductDialogProps {
-  onProductAdded: () => void;
+interface EditProductDialogProps {
+  productId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onProductUpdated: () => void;
 }
 
-const AddProductDialog = ({ onProductAdded }: AddProductDialogProps) => {
-  const [open, setOpen] = useState(false);
+const EditProductDialog = ({ productId, open, onOpenChange, onProductUpdated }: EditProductDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
@@ -25,22 +26,46 @@ const AddProductDialog = ({ onProductAdded }: AddProductDialogProps) => {
     brand: "",
     category: "",
     in_stock: true,
+    current_image: "",
   });
+
+  useEffect(() => {
+    if (open && productId) {
+      fetchProduct();
+    }
+  }, [open, productId]);
+
+  const fetchProduct = async () => {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .single();
+
+    if (error) {
+      toast.error("Failed to load product");
+      return;
+    }
+
+    setFormData({
+      title: data.title || "",
+      description: data.description || "",
+      price: data.price?.toString() || "",
+      brand: data.brand || "",
+      category: data.category || "",
+      in_stock: data.in_stock ?? true,
+      current_image: data.image_url || "",
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("You must be logged in");
-        return;
-      }
+      let image_url = formData.current_image;
 
-      let image_url = null;
-
-      // Upload image if provided
+      // Upload new image if provided
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -59,8 +84,7 @@ const AddProductDialog = ({ onProductAdded }: AddProductDialogProps) => {
         image_url = publicUrl;
       }
 
-      const { error } = await supabase.from("products").insert({
-        seller_id: user.id,
+      const { error } = await supabase.from("products").update({
         title: formData.title,
         description: formData.description,
         price: parseFloat(formData.price),
@@ -68,40 +92,25 @@ const AddProductDialog = ({ onProductAdded }: AddProductDialogProps) => {
         category: formData.category,
         image_url,
         in_stock: formData.in_stock,
-      });
+      }).eq("id", productId);
 
       if (error) throw error;
 
-      toast.success("Product added successfully");
-      setOpen(false);
-      setImageFile(null);
-      setFormData({
-        title: "",
-        description: "",
-        price: "",
-        brand: "",
-        category: "",
-        in_stock: true,
-      });
-      onProductAdded();
+      toast.success("Product updated successfully");
+      onOpenChange(false);
+      onProductUpdated();
     } catch (error: any) {
-      toast.error(error.message || "Failed to add product");
+      toast.error(error.message || "Failed to update product");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Product
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Product</DialogTitle>
+          <DialogTitle>Edit Product</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -171,6 +180,9 @@ const AddProductDialog = ({ onProductAdded }: AddProductDialogProps) => {
 
           <div>
             <Label htmlFor="image">Product Image</Label>
+            {formData.current_image && (
+              <img src={formData.current_image} alt="Current" className="w-24 h-24 object-cover rounded mb-2" />
+            )}
             <Input
               id="image"
               type="file"
@@ -189,11 +201,11 @@ const AddProductDialog = ({ onProductAdded }: AddProductDialogProps) => {
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Adding..." : "Add Product"}
+              {loading ? "Updating..." : "Update Product"}
             </Button>
           </div>
         </form>
@@ -202,4 +214,4 @@ const AddProductDialog = ({ onProductAdded }: AddProductDialogProps) => {
   );
 };
 
-export default AddProductDialog;
+export default EditProductDialog;
