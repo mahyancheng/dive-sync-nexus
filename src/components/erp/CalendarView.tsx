@@ -10,6 +10,7 @@ interface Event {
   title: string;
   description?: string;
   date: Date;
+  location?: string;
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
   bookingId?: string;
@@ -115,10 +116,15 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                           key={event.id}
                           className="text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate"
                           style={{ borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})` }}
-                          title={event.title}
+                          title={`${event.title}${event.location ? ` - ${event.location}` : ''}`}
                         >
                           <div className="font-medium truncate">{event.title}</div>
-                          {event.description && (
+                          {event.location && (
+                            <div className="text-muted-foreground truncate text-[10px]">
+                              📍 {event.location}
+                            </div>
+                          )}
+                          {event.description && !event.location && (
                             <div className="text-muted-foreground truncate text-[10px]">
                               {event.description}
                             </div>

@@ -33,10 +33,16 @@ export const EventsList = ({ events, onEventClick, selectedDate }: EventsListPro
 
   const filteredEvents = useMemo(() => {
     return events.filter(event => {
-      // Search filter
-      if (searchQuery && !event.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !event.description?.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false;
+      // Search filter - search in title, description, and location
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesTitle = event.title.toLowerCase().includes(query);
+        const matchesDescription = event.description?.toLowerCase().includes(query);
+        const matchesLocation = event.location?.toLowerCase().includes(query);
+        
+        if (!matchesTitle && !matchesDescription && !matchesLocation) {
+          return false;
+        }
       }
 
       // Time filter
