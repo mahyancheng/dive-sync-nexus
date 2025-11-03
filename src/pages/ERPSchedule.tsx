@@ -115,7 +115,7 @@ const ERPSchedule = () => {
           title: (experiencesMap[booking.experience_id]?.title as string | undefined) || booking.group_name || "Dive Booking",
           description: `${booking.participants_count} divers - ${booking.dive_type || "Custom"}`,
           date: new Date(booking.dive_date),
-          location: (experiencesMap[booking.experience_id]?.location as string | undefined) || undefined,
+          location: booking.location || (experiencesMap[booking.experience_id]?.location as string | undefined) || undefined,
           type: "booking",
           priority: booking.status === "confirmed" ? "high" : "medium",
           bookingId: booking.id

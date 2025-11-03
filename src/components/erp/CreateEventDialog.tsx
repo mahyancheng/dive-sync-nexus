@@ -64,7 +64,8 @@ export const CreateEventDialog = ({ diveCenterId, onEventCreated }: CreateEventD
           total_amount: 0,
           payment_status: "unpaid",
           status: formData.priority === "high" ? "confirmed" : "pending",
-          notes: formData.description
+          notes: formData.description,
+          location: formData.location || null
         });
 
         currentDate.setDate(currentDate.getDate() + 1);
