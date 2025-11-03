@@ -26,14 +26,7 @@ const Shop = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select(`
-        *,
-        profiles:seller_id (
-          username,
-          full_name,
-          avatar_url
-        )
-      `)
+      .select('*')
       .eq('in_stock', true)
       .limit(20);
     if (data) setProductsData(data);
@@ -60,8 +53,6 @@ const Shop = () => {
   const products = productsData.length > 0 ? productsData.map(p => ({
     id: p.id,
     seller_id: p.seller_id,
-    seller_name: (p.profiles as any)?.full_name || (p.profiles as any)?.username || 'Vendor',
-    seller_avatar: (p.profiles as any)?.avatar_url,
     title: p.title,
     brand: p.brand,
     price: p.price,
@@ -268,23 +259,6 @@ const Shop = () => {
                     <p className="text-xs text-muted-foreground">{product.brand}</p>
                     <h3 className="font-semibold text-sm line-clamp-2 leading-tight">{product.title}</h3>
                   </div>
-
-                  {product.seller_name && (
-                    <div className="flex items-center gap-1.5">
-                      {product.seller_avatar ? (
-                        <img 
-                          src={product.seller_avatar} 
-                          alt={product.seller_name}
-                          className="w-4 h-4 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center">
-                          <span className="text-[8px] font-semibold">{product.seller_name[0]}</span>
-                        </div>
-                      )}
-                      <span className="text-xs text-muted-foreground">by {product.seller_name}</span>
-                    </div>
-                  )}
 
                   <div className="flex items-center gap-1 text-xs">
                     <Star className="w-3 h-3 text-accent fill-accent" />
