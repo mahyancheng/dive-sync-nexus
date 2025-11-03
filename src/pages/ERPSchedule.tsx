@@ -1,16 +1,14 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, Plus, Grid3x3, List } from "lucide-react";
+import { Calendar, ArrowLeft, Grid3x3, List } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
 import { CalendarView } from "@/components/erp/CalendarView";
 import { EventsList } from "@/components/erp/EventsList";
 import { EventDetailDialog } from "@/components/erp/EventDetailDialog";
 import { CreateEventDialog } from "@/components/erp/CreateEventDialog";
-import { Card } from "@/components/ui/card";
-import { format } from "date-fns";
 
 interface Event {
   id: string;
@@ -156,17 +154,6 @@ const ERPSchedule = () => {
     }
   };
 
-  // Group events by date for list view
-  const groupedEvents = useMemo(() => {
-    const sorted = [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
-    return sorted.reduce<Record<string, Event[]>>((acc, event) => {
-      const dateKey = format(event.date, "EEEE, MMMM d, yyyy");
-      if (!acc[dateKey]) acc[dateKey] = [];
-      acc[dateKey].push(event);
-      return acc;
-    }, {});
-  }, [events]);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
       <Navbar />
@@ -247,68 +234,13 @@ const ERPSchedule = () => {
             </div>
           </div>
         ) : (
-          /* List View */
-          <Card className="p-6">
-            {Object.entries(groupedEvents).length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">
-                No events found
-              </div>
-            ) : (
-              Object.entries(groupedEvents).map(([date, dateEvents]) => (
-                <div key={date} className="mb-6 last:mb-0">
-                  <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-                    {date}
-                  </h3>
-                  <div className="space-y-2">
-                    {dateEvents.map((event) => (
-                      <button
-                        key={event.id}
-                        onClick={() => handleEventClick(event.id)}
-                        className="w-full rounded-lg border bg-card p-4 text-left hover:shadow-sm hover:bg-accent transition-all"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="font-semibold">{event.title}</div>
-                              {event.status === "completed" && (
-                                <span className="text-xs text-muted-foreground">✓ Completed</span>
-                              )}
-                            </div>
-                            {event.description && (
-                              <div className="text-sm text-muted-foreground mb-2">
-                                {event.description}
-                              </div>
-                            )}
-                            {event.location && (
-                              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                📍 {event.location}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span
-                              className={`px-2 py-1 rounded text-xs font-medium ${
-                                event.priority === "high"
-                                  ? "bg-red-500/10 text-red-500"
-                                  : event.priority === "medium"
-                                  ? "bg-yellow-500/10 text-yellow-500"
-                                  : "bg-green-500/10 text-green-500"
-                              }`}
-                            >
-                              {event.priority}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {event.type}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-          </Card>
+          /* List View - Full Width Events List */
+          <EventsList
+            events={events}
+            onEventClick={handleEventClick}
+            selectedDate={selectedDate}
+            onClearFilters={() => setSelectedDate(null)}
+          />
         )}
 
         {/* Event Detail Dialog */}
