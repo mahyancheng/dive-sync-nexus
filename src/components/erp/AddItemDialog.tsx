@@ -28,7 +28,9 @@ export const AddItemDialog = ({ diveCenterId, onItemAdded }: AddItemDialogProps)
     tank_number: "",
     gas_type: "Air",
     pressure_bar: "",
-    status: "empty"
+    status: "empty",
+    nitrox_o2_percentage: "",
+    nitrox_mod: ""
   });
   const [boatData, setBoatData] = useState({
     name: "",
@@ -65,19 +67,26 @@ export const AddItemDialog = ({ diveCenterId, onItemAdded }: AddItemDialogProps)
     e.preventDefault();
     setLoading(true);
     try {
+      const insertData: any = {
+        dive_center_id: diveCenterId,
+        tank_number: tankData.tank_number,
+        gas_type: tankData.gas_type,
+        pressure_bar: tankData.pressure_bar ? parseInt(tankData.pressure_bar) : null,
+        status: tankData.status
+      };
+
+      if (tankData.gas_type === "Nitrox") {
+        insertData.nitrox_o2_percentage = tankData.nitrox_o2_percentage ? parseFloat(tankData.nitrox_o2_percentage) : null;
+        insertData.nitrox_mod = tankData.nitrox_mod ? parseFloat(tankData.nitrox_mod) : null;
+      }
+
       const { error } = await supabase
         .from("dive_tanks")
-        .insert({
-          dive_center_id: diveCenterId,
-          tank_number: tankData.tank_number,
-          gas_type: tankData.gas_type,
-          pressure_bar: tankData.pressure_bar ? parseInt(tankData.pressure_bar) : null,
-          status: tankData.status
-        });
+        .insert(insertData);
       if (error) throw error;
       toast.success("Tank added successfully");
       setOpen(false);
-      setTankData({ tank_number: "", gas_type: "Air", pressure_bar: "", status: "empty" });
+      setTankData({ tank_number: "", gas_type: "Air", pressure_bar: "", status: "empty", nitrox_o2_percentage: "", nitrox_mod: "" });
       onItemAdded();
     } catch (error: any) {
       toast.error(error.message || "Failed to add tank");
@@ -210,13 +219,44 @@ export const AddItemDialog = ({ diveCenterId, onItemAdded }: AddItemDialogProps)
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Air">Air</SelectItem>
-                    <SelectItem value="Nitrox 32">Nitrox 32</SelectItem>
-                    <SelectItem value="Nitrox 36">Nitrox 36</SelectItem>
-                    <SelectItem value="Trimix">Trimix</SelectItem>
+                    <SelectItem value="Air">Compressed Air</SelectItem>
+                    <SelectItem value="Nitrox">Nitrox</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
+              {tankData.gas_type === "Nitrox" && (
+                <>
+                  <div>
+                    <Label htmlFor="nitrox_o2_percentage">O2 Percentage (%)</Label>
+                    <Input
+                      id="nitrox_o2_percentage"
+                      type="number"
+                      min="21"
+                      max="40"
+                      step="0.1"
+                      required
+                      value={tankData.nitrox_o2_percentage}
+                      onChange={(e) => setTankData({ ...tankData, nitrox_o2_percentage: e.target.value })}
+                      placeholder="e.g., 32"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="nitrox_mod">Maximum Operating Depth (m)</Label>
+                    <Input
+                      id="nitrox_mod"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      required
+                      value={tankData.nitrox_mod}
+                      onChange={(e) => setTankData({ ...tankData, nitrox_mod: e.target.value })}
+                      placeholder="e.g., 34"
+                    />
+                  </div>
+                </>
+              )}
+
               <div>
                 <Label htmlFor="pressure_bar">Pressure (bar)</Label>
                 <Input

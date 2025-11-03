@@ -68,6 +68,15 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
         updateData.gas_type = formData.gas_type;
         updateData.pressure_bar = formData.pressure_bar ? parseInt(formData.pressure_bar) : null;
         updateData.status = formData.status;
+        
+        if (formData.gas_type === "Nitrox") {
+          updateData.nitrox_o2_percentage = formData.nitrox_o2_percentage ? parseFloat(formData.nitrox_o2_percentage) : null;
+          updateData.nitrox_mod = formData.nitrox_mod ? parseFloat(formData.nitrox_mod) : null;
+        } else {
+          // Clear Nitrox fields if changing back to Air
+          updateData.nitrox_o2_percentage = null;
+          updateData.nitrox_mod = null;
+        }
       } else if (itemCategory === "boat") {
         updateData.name = formData.name;
         updateData.max_capacity = parseInt(formData.max_capacity);
@@ -177,13 +186,43 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Air">Air</SelectItem>
-                <SelectItem value="Nitrox 32">Nitrox 32</SelectItem>
-                <SelectItem value="Nitrox 36">Nitrox 36</SelectItem>
-                <SelectItem value="Trimix">Trimix</SelectItem>
+                <SelectItem value="Air">Compressed Air</SelectItem>
+                <SelectItem value="Nitrox">Nitrox</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {formData.gas_type === "Nitrox" && (
+            <>
+              <div>
+                <Label htmlFor="nitrox_o2_percentage">O2 Percentage (%)</Label>
+                <Input
+                  id="nitrox_o2_percentage"
+                  type="number"
+                  min="21"
+                  max="40"
+                  step="0.1"
+                  required
+                  value={formData.nitrox_o2_percentage || ""}
+                  onChange={(e) => setFormData({ ...formData, nitrox_o2_percentage: e.target.value })}
+                  placeholder="e.g., 32"
+                />
+              </div>
+              <div>
+                <Label htmlFor="nitrox_mod">Maximum Operating Depth (m)</Label>
+                <Input
+                  id="nitrox_mod"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  required
+                  value={formData.nitrox_mod || ""}
+                  onChange={(e) => setFormData({ ...formData, nitrox_mod: e.target.value })}
+                  placeholder="e.g., 34"
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <Label htmlFor="pressure_bar">Pressure (bar)</Label>
