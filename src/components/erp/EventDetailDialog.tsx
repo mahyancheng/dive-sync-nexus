@@ -532,63 +532,85 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
             </div>
           )}
 
-          {/* Equipment Requests */}
+          {/* All Requested Inventory */}
           {event.type === "booking" && event.bookingId && equipmentRequests.length > 0 && (
             <div className="border-t pt-4">
               <div className="flex items-center gap-2 mb-3">
-                <Users className="w-4 h-4 text-primary" />
-                <h5 className="font-semibold text-sm">Client Equipment Requests ({equipmentRequests.length})</h5>
+                <Package className="w-4 h-4 text-primary" />
+                <h5 className="font-semibold text-sm">All Requested Inventory</h5>
               </div>
-              <div className="space-y-3">
-                {equipmentRequests.map((req) => (
-                  <Card key={req.id} className="p-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold">{req.customer_name}</p>
-                          {req.customer_email && (
-                            <p className="text-xs text-muted-foreground">{req.customer_email}</p>
-                          )}
-                        </div>
-                        <Badge variant={req.status === "pending" ? "secondary" : "default"}>
-                          {req.status}
+              <Card className="p-4">
+                <div className="space-y-2">
+                  {equipmentRequests.flatMap((req) => {
+                    const items = [];
+                    if (req.bcd_needed) {
+                      items.push({
+                        type: 'BCD',
+                        size: req.bcd_size,
+                        customer: req.customer_name,
+                        status: req.status
+                      });
+                    }
+                    if (req.fins_needed) {
+                      items.push({
+                        type: 'Fins',
+                        size: req.fins_size,
+                        customer: req.customer_name,
+                        status: req.status
+                      });
+                    }
+                    if (req.regulator_needed) {
+                      items.push({
+                        type: 'Regulator',
+                        size: null,
+                        customer: req.customer_name,
+                        status: req.status
+                      });
+                    }
+                    if (req.mask_needed) {
+                      items.push({
+                        type: 'Mask',
+                        size: null,
+                        customer: req.customer_name,
+                        status: req.status
+                      });
+                    }
+                    if (req.wetsuit_needed) {
+                      items.push({
+                        type: 'Wetsuit',
+                        size: req.wetsuit_size,
+                        customer: req.customer_name,
+                        status: req.status
+                      });
+                    }
+                    return items;
+                  }).map((item, index) => (
+                    <div key={index} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 border">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="min-w-[90px] justify-center">
+                          {item.type}
                         </Badge>
+                        {item.size && (
+                          <Badge variant="secondary" className="min-w-[60px] justify-center">
+                            {item.size}
+                          </Badge>
+                        )}
+                        <span className="text-sm text-muted-foreground">for {item.customer}</span>
                       </div>
-                      
-                      <div className="text-sm space-y-1">
-                        <p className="font-medium text-muted-foreground">Requested Equipment:</p>
-                        <div className="grid grid-cols-2 gap-1 text-xs">
-                          {req.bcd_needed && (
-                            <div>• BCD ({req.bcd_size || 'Size not specified'})</div>
-                          )}
-                          {req.fins_needed && (
-                            <div>• Fins ({req.fins_size || 'Size not specified'})</div>
-                          )}
-                          {req.regulator_needed && (
-                            <div>• Regulator</div>
-                          )}
-                          {req.mask_needed && (
-                            <div>• Mask</div>
-                          )}
-                          {req.wetsuit_needed && (
-                            <div>• Wetsuit ({req.wetsuit_size || 'Size not specified'})</div>
-                          )}
-                          {!req.bcd_needed && !req.fins_needed && !req.regulator_needed && !req.mask_needed && !req.wetsuit_needed && (
-                            <div className="col-span-2 text-muted-foreground">No equipment needed</div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {req.notes && (
-                        <div className="text-xs">
-                          <p className="font-medium text-muted-foreground">Notes:</p>
-                          <p className="text-muted-foreground">{req.notes}</p>
-                        </div>
-                      )}
+                      <Badge variant={item.status === "pending" ? "secondary" : "default"}>
+                        {item.status}
+                      </Badge>
                     </div>
-                  </Card>
-                ))}
-              </div>
+                  ))}
+                  {equipmentRequests.every(req => 
+                    !req.bcd_needed && !req.fins_needed && !req.regulator_needed && !req.mask_needed && !req.wetsuit_needed
+                  ) && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No equipment requested
+                    </p>
+                  )}
+                </div>
+              </Card>
             </div>
           )}
 
