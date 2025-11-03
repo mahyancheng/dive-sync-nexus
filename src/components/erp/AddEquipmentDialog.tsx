@@ -75,7 +75,11 @@ export const AddEquipmentDialog = ({ diveCenterId, onEquipmentAdded, trigger }: 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="equipment_type">Equipment Type</Label>
-            <Select value={formData.equipment_type} onValueChange={(value) => setFormData({ ...formData, equipment_type: value })}>
+            <Select 
+              value={formData.equipment_type} 
+              onValueChange={(value) => setFormData({ ...formData, equipment_type: value })}
+              required
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -85,19 +89,18 @@ export const AddEquipmentDialog = ({ diveCenterId, onEquipmentAdded, trigger }: 
                 <SelectItem value="Wetsuit">Wetsuit</SelectItem>
                 <SelectItem value="Fins">Fins</SelectItem>
                 <SelectItem value="Mask">Mask</SelectItem>
-                <SelectItem value="Dive Computer">Dive Computer</SelectItem>
-                <SelectItem value="Weight Belt">Weight Belt</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label htmlFor="size">Size</Label>
+            <Label htmlFor="size">Size (Required)</Label>
             <Input
               id="size"
               value={formData.size}
               onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-              placeholder="e.g., M, L, XL"
+              placeholder="e.g., S, M, L, XL, 38-40"
+              required
             />
           </div>
 
