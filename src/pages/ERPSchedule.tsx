@@ -20,6 +20,7 @@ interface Event {
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
   bookingId?: string;
+  status?: string;
 }
 
 const ERPSchedule = () => {
@@ -118,7 +119,8 @@ const ERPSchedule = () => {
           location: booking.location || (experiencesMap[booking.experience_id]?.location as string | undefined) || undefined,
           type: "booking",
           priority: booking.status === "confirmed" ? "high" : "medium",
-          bookingId: booking.id
+          bookingId: booking.id,
+          status: booking.status
         });
       });
     }

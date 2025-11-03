@@ -17,6 +17,7 @@ interface Event {
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
   bookingId?: string;
+  status?: string;
 }
 
 interface EventsListProps {
@@ -194,10 +195,15 @@ export const EventsList = ({ events, onEventClick, selectedDate, onClearFilters 
               <button
                 key={event.id}
                 onClick={() => onEventClick(event.id)}
-                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
+                className={`w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 transition-colors ${
+                  event.status === "completed" ? "opacity-60" : ""
+                }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h4 className="font-semibold text-sm">{event.title}</h4>
+                  <h4 className="font-semibold text-sm flex items-center gap-1">
+                    {event.status === "completed" && <span className="text-green-500">✓</span>}
+                    {event.title}
+                  </h4>
                   <div className={`w-2 h-2 rounded-full ${getPriorityColor(event.priority)}`} />
                 </div>
                 

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, Clock, Users, Package, Wand2, X } from "lucide-react";
+import { Calendar, MapPin, Clock, Users, Package, Wand2, X, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface Event {
@@ -45,13 +45,33 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
   const [availableInventory, setAvailableInventory] = useState<InventoryItem[]>([]);
   const [assignedInventory, setAssignedInventory] = useState<InventoryItem[]>([]);
   const [autoAssignMethod, setAutoAssignMethod] = useState<"fifo" | "usage">("fifo");
+  const [bookingStatus, setBookingStatus] = useState<string>("");
 
   useEffect(() => {
     if (open && event) {
       fetchInventory();
       fetchAssignedInventory();
+      fetchBookingStatus();
     }
   }, [open, event, diveCenterId]);
+
+  const fetchBookingStatus = async () => {
+    if (!event?.bookingId) return;
+    
+    try {
+      const { data } = await supabase
+        .from("dive_bookings")
+        .select("status")
+        .eq("id", event.bookingId)
+        .single();
+      
+      if (data) {
+        setBookingStatus(data.status);
+      }
+    } catch (error) {
+      console.error("Failed to fetch booking status:", error);
+    }
+  };
 
   const fetchInventory = async () => {
     try {
@@ -248,6 +268,28 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
     }
   };
 
+  const handleMarkAsFinished = async () => {
+    if (!event?.bookingId) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("dive_bookings")
+        .update({ status: "completed" })
+        .eq("id", event.bookingId);
+
+      if (error) throw error;
+
+      toast.success("Dive marked as finished!");
+      setBookingStatus("completed");
+      onUpdated?.();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to mark dive as finished");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!event) return null;
 
   const getTypeColor = (type: string) => {
@@ -296,6 +338,12 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
               <Badge variant="outline" className={getPriorityColor(event.priority)}>
                 {event.priority} priority
               </Badge>
+              {bookingStatus === "completed" && (
+                <Badge variant="outline" className="bg-green-500/20 text-green-500 border-green-500/30">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Completed
+                </Badge>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -317,6 +365,21 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
               )}
             </div>
           </div>
+
+          {/* Mark as Finished Button */}
+          {event.type === "booking" && event.bookingId && bookingStatus !== "completed" && (
+            <div className="border-t pt-4">
+              <Button 
+                onClick={handleMarkAsFinished} 
+                disabled={loading}
+                className="w-full gap-2"
+                variant="default"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Mark Dive as Finished
+              </Button>
+            </div>
+          )}
 
           {/* Inventory Assignment */}
           {event.type === "booking" && event.bookingId && (

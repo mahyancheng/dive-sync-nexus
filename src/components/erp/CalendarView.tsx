@@ -14,6 +14,7 @@ interface Event {
   type: "booking" | "maintenance" | "work-order" | "custom";
   priority: "low" | "medium" | "high";
   bookingId?: string;
+  status?: string;
 }
 
 interface CalendarViewProps {
@@ -114,11 +115,16 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                       {dayEvents.slice(0, 3).map((event) => (
                         <div
                           key={event.id}
-                          className="text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate"
+                          className={`text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate ${
+                            event.status === "completed" ? "opacity-60" : ""
+                          }`}
                           style={{ borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})` }}
-                          title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.description ? ` - ${event.description}` : ''}`}
+                          title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.description ? ` - ${event.description}` : ''}${event.status === "completed" ? " (Completed)" : ""}`}
                         >
-                          <div className="font-medium truncate">{event.title}</div>
+                          <div className="font-medium truncate flex items-center gap-1">
+                            {event.status === "completed" && "✓ "}
+                            {event.title}
+                          </div>
                           <div className="text-muted-foreground truncate text-[10px]">
                             {event.description}
                             {event.location && (
