@@ -116,19 +116,15 @@ export const CalendarView = ({ events, selectedDate, onDateSelect }: CalendarVie
                           key={event.id}
                           className="text-xs p-1 rounded bg-accent/50 border-l-2 border-current truncate"
                           style={{ borderColor: `var(--${getPriorityColor(event.priority).replace('bg-', '')})` }}
-                          title={`${event.title}${event.location ? ` - ${event.location}` : ''}`}
+                          title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.description ? ` - ${event.description}` : ''}`}
                         >
                           <div className="font-medium truncate">{event.title}</div>
-                          {event.location && (
-                            <div className="text-muted-foreground truncate text-[10px]">
-                              📍 {event.location}
-                            </div>
-                          )}
-                          {event.description && !event.location && (
-                            <div className="text-muted-foreground truncate text-[10px]">
-                              {event.description}
-                            </div>
-                          )}
+                          <div className="text-muted-foreground truncate text-[10px]">
+                            {event.description}
+                            {event.location && (
+                              <span className="ml-1">📍 {event.location}</span>
+                            )}
+                          </div>
                         </div>
                       ))}
                       {dayEvents.length > 3 && (

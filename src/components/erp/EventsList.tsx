@@ -23,9 +23,10 @@ interface EventsListProps {
   events: Event[];
   onEventClick: (eventId: string) => void;
   selectedDate: Date | null;
+  onClearFilters?: () => void;
 }
 
-export const EventsList = ({ events, onEventClick, selectedDate }: EventsListProps) => {
+export const EventsList = ({ events, onEventClick, selectedDate, onClearFilters }: EventsListProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -133,6 +134,7 @@ export const EventsList = ({ events, onEventClick, selectedDate }: EventsListPro
               setTimeFilter("all");
               setTypeFilter("all");
               setPriorityFilter("all");
+              onClearFilters?.();
             }}
             title="Clear all filters"
           >

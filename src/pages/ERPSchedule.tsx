@@ -202,6 +202,7 @@ const ERPSchedule = () => {
                 events={events}
                 onEventClick={handleEventClick}
                 selectedDate={selectedDate}
+                onClearFilters={() => setSelectedDate(null)}
               />
             </div>
           </div>
