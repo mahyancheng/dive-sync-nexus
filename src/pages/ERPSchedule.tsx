@@ -77,8 +77,27 @@ const ERPSchedule = () => {
     // Fetch bookings
     const { data: bookings } = await supabase
       .from("dive_bookings")
-      .select("*, experience:experiences(title, location)")
+      .select("*")
       .eq("dive_center_id", centers.id);
+
+    // Build experience map for titles/locations
+    const experienceIds = (bookings || [])
+      .map((b: any) => b.experience_id)
+      .filter((id: string | null | undefined) => !!id);
+
+    let experiencesMap: Record<string, { title: string | null; location: string | null }> = {};
+    if (experienceIds.length > 0) {
+      const { data: exps } = await supabase
+        .from("experiences")
+        .select("id, title, location")
+        .in("id", experienceIds);
+      if (exps) {
+        experiencesMap = exps.reduce((acc: Record<string, { title: string | null; location: string | null }>, e: any) => {
+          acc[e.id] = { title: e.title, location: e.location };
+          return acc;
+        }, {});
+      }
+    }
 
     // Fetch maintenance logs
     const { data: maintenance } = await supabase
@@ -93,10 +112,10 @@ const ERPSchedule = () => {
       bookings.forEach(booking => {
         allEvents.push({
           id: `booking-${booking.id}`,
-          title: booking.experience?.title || booking.group_name || "Dive Booking",
+          title: (experiencesMap[booking.experience_id]?.title as string | undefined) || booking.group_name || "Dive Booking",
           description: `${booking.participants_count} divers - ${booking.dive_type || "Custom"}`,
           date: new Date(booking.dive_date),
-          location: booking.experience?.location,
+          location: (experiencesMap[booking.experience_id]?.location as string | undefined) || undefined,
           type: "booking",
           priority: booking.status === "confirmed" ? "high" : "medium",
           bookingId: booking.id
