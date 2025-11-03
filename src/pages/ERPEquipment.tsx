@@ -2,11 +2,14 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Package, ArrowLeft, Plus, BarChart3 } from "lucide-react";
+import { Package, ArrowLeft, BarChart3 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
 import { InventoryStats } from "@/components/erp/InventoryStats";
 import { InventoryTable, InventoryItem } from "@/components/erp/InventoryTable";
+import { ItemHistoryDialog } from "@/components/erp/ItemHistoryDialog";
+import { EditItemDialog } from "@/components/erp/EditItemDialog";
+import { AddItemDialog } from "@/components/erp/AddItemDialog";
 import { differenceInDays } from "date-fns";
 
 const ERPEquipment = () => {
@@ -16,6 +19,10 @@ const ERPEquipment = () => {
   const [boats, setBoats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemCategory, setSelectedItemCategory] = useState<"equipment" | "tank" | "boat" | null>(null);
 
   useEffect(() => {
     checkAccessAndFetch();
@@ -160,11 +167,17 @@ const ERPEquipment = () => {
   }, [inventoryItems]);
 
   const handleViewHistory = (itemId: string) => {
-    toast.info("Item history coming soon");
+    const category = itemId.split('-')[0] as "equipment" | "tank" | "boat";
+    setSelectedItemId(itemId);
+    setSelectedItemCategory(category);
+    setHistoryDialogOpen(true);
   };
 
   const handleEditItem = (itemId: string) => {
-    toast.info("Edit item coming soon");
+    const category = itemId.split('-')[0] as "equipment" | "tank" | "boat";
+    setSelectedItemId(itemId);
+    setSelectedItemCategory(category);
+    setEditDialogOpen(true);
   };
 
   return (
@@ -194,10 +207,9 @@ const ERPEquipment = () => {
               <BarChart3 className="w-4 h-4" />
               Analytics
             </Button>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Item
-            </Button>
+            {diveCenterId && (
+              <AddItemDialog diveCenterId={diveCenterId} onItemAdded={fetchInventory} />
+            )}
           </div>
         </div>
 
@@ -218,6 +230,21 @@ const ERPEquipment = () => {
             />
           </div>
         )}
+
+        {/* Dialogs */}
+        <ItemHistoryDialog 
+          itemId={selectedItemId}
+          itemCategory={selectedItemCategory}
+          open={historyDialogOpen}
+          onOpenChange={setHistoryDialogOpen}
+        />
+        <EditItemDialog 
+          itemId={selectedItemId}
+          itemCategory={selectedItemCategory}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onItemUpdated={fetchInventory}
+        />
       </main>
     </div>
   );
