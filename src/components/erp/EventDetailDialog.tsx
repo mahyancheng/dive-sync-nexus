@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, Clock, Users, Package, Wand2, X, CheckCircle2, Link2, Copy } from "lucide-react";
+import { Calendar, MapPin, Clock, Users, Package, Wand2, X, CheckCircle2, Link2, Copy, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 
@@ -319,6 +319,28 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
     }
   };
 
+  const handleRevertCompletion = async () => {
+    if (!event?.bookingId) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("dive_bookings")
+        .update({ status: "confirmed" })
+        .eq("id", event.bookingId);
+
+      if (error) throw error;
+
+      toast.success("Completion reverted - booking is now confirmed");
+      setBookingStatus("confirmed");
+      onUpdated?.();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to revert completion");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!event) return null;
 
   const getTypeColor = (type: string) => {
@@ -483,18 +505,30 @@ export const EventDetailDialog = ({ event, diveCenterId, open, onOpenChange, onU
             </div>
           )}
 
-          {/* Mark as Finished Button */}
-          {event.type === "booking" && event.bookingId && bookingStatus !== "completed" && (
+          {/* Mark as Finished / Revert Button */}
+          {event.type === "booking" && event.bookingId && (
             <div className="border-t pt-4">
-              <Button 
-                onClick={handleMarkAsFinished} 
-                disabled={loading}
-                className="w-full gap-2"
-                variant="default"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Mark Dive as Finished
-              </Button>
+              {bookingStatus === "completed" ? (
+                <Button 
+                  onClick={handleRevertCompletion} 
+                  disabled={loading}
+                  className="w-full gap-2"
+                  variant="outline"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Revert Completion
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleMarkAsFinished} 
+                  disabled={loading}
+                  className="w-full gap-2"
+                  variant="default"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Mark Dive as Finished
+                </Button>
+              )}
             </div>
           )}
 
