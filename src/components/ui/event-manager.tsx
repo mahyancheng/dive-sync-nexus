@@ -19,6 +19,9 @@ export interface Event {
   category?: string
   attendees?: string[]
   tags?: string[]
+  completed?: boolean
+  diveType?: string
+  eventGroupId?: string
 }
 
 export interface EventManagerProps {
@@ -49,7 +52,7 @@ export function EventManager({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
-  const [newEvent, setNewEvent] = useState<Partial<Event>>({ title: "", startTime: undefined, endTime: undefined, color: "blue" })
+  const [newEvent, setNewEvent] = useState<Partial<Event>>({ title: "", startTime: undefined, endTime: undefined, color: "blue", completed: false })
 
   const filteredEvents = useMemo(() => events.slice().sort((a,b)=>a.startTime.getTime()-b.startTime.getTime()), [events])
 
@@ -67,9 +70,19 @@ export function EventManager({
 
   const handleCreate = useCallback(() => {
     if (!newEvent.title || !newEvent.startTime || !newEvent.endTime) return
-    const ev: Event = { id: Math.random().toString(36).slice(2,11), title: newEvent.title, description: "", startTime: newEvent.startTime, endTime: newEvent.endTime, color: "blue" }
+    const ev: Event = { 
+      id: Math.random().toString(36).slice(2,11), 
+      title: newEvent.title, 
+      description: newEvent.description || "", 
+      startTime: newEvent.startTime, 
+      endTime: newEvent.endTime, 
+      color: newEvent.color || "blue",
+      completed: false,
+      diveType: newEvent.diveType,
+      eventGroupId: newEvent.eventGroupId
+    }
     setEvents((p)=>[...p, ev]); onEventCreate?.(ev)
-    setIsDialogOpen(false); setIsCreating(false); setNewEvent({ title: "", color: "blue" })
+    setIsDialogOpen(false); setIsCreating(false); setNewEvent({ title: "", color: "blue", completed: false })
   }, [newEvent, onEventCreate])
 
   const handleSave = useCallback(() => {
@@ -113,13 +126,23 @@ export function EventManager({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{isCreating?"Create Event":"Event Details"}</DialogTitle>
-            <DialogDescription>{isCreating?"Add a new event":"Edit or delete event"}</DialogDescription>
+            <DialogDescription>
+              {isCreating 
+                ? "Add a new event. Multi-day events will create one event per day." 
+                : selectedEvent?.eventGroupId 
+                  ? "This is a multi-day event. Changes will apply to all days in the event." 
+                  : "Edit or delete event"}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-1">
               <Label htmlFor="title">Title</Label>
               <Input id="title" value={isCreating? (newEvent.title||"") : (selectedEvent?.title||"")} onChange={(e)=> isCreating? setNewEvent(p=>({...p, title:e.target.value})) : setSelectedEvent(p=> p? {...p, title:e.target.value} : p)} placeholder="Event title" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="description">Description</Label>
+              <Input id="description" value={isCreating? (newEvent.description||"") : (selectedEvent?.description||"")} onChange={(e)=> isCreating? setNewEvent(p=>({...p, description:e.target.value})) : setSelectedEvent(p=> p? {...p, description:e.target.value} : p)} placeholder="Event description" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -137,10 +160,60 @@ export function EventManager({
                 }} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="color">Color</Label>
+                <select 
+                  id="color" 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={isCreating? (newEvent.color||"blue") : (selectedEvent?.color||"blue")} 
+                  onChange={(e)=> isCreating? setNewEvent(p=>({...p, color:e.target.value})) : setSelectedEvent(p=> p? {...p, color:e.target.value} : p)}
+                >
+                  <option value="blue">Blue</option>
+                  <option value="red">Red</option>
+                  <option value="green">Green</option>
+                  <option value="yellow">Yellow</option>
+                  <option value="purple">Purple</option>
+                  <option value="orange">Orange</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="diveType">Dive Type</Label>
+                <select 
+                  id="diveType" 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={isCreating? (newEvent.diveType||"") : (selectedEvent?.diveType||"")} 
+                  onChange={(e)=> isCreating? setNewEvent(p=>({...p, diveType:e.target.value})) : setSelectedEvent(p=> p? {...p, diveType:e.target.value} : p)}
+                >
+                  <option value="">Select type</option>
+                  <option value="shore">Shore Dive</option>
+                  <option value="boat">Boat Dive</option>
+                  <option value="wreck">Wreck Dive</option>
+                  <option value="night">Night Dive</option>
+                  <option value="drift">Drift Dive</option>
+                  <option value="deep">Deep Dive</option>
+                  <option value="training">Training</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
-            {!isCreating && selectedEvent && <Button variant="destructive" onClick={()=>handleDelete(selectedEvent.id)}>Delete</Button>}
+            {!isCreating && selectedEvent && (
+              <>
+                <Button 
+                  variant={selectedEvent.completed ? "outline" : "default"} 
+                  onClick={()=>{
+                    const updated = {...selectedEvent, completed: !selectedEvent.completed};
+                    setSelectedEvent(updated);
+                    onEventUpdate?.(selectedEvent.id, updated);
+                  }}
+                >
+                  {selectedEvent.completed ? "Mark Incomplete" : "Mark Complete"}
+                </Button>
+                <Button variant="destructive" onClick={()=>handleDelete(selectedEvent.id)}>Delete</Button>
+              </>
+            )}
             <Button variant="outline" onClick={()=>{ setIsDialogOpen(false); setIsCreating(false); setSelectedEvent(null) }}>Cancel</Button>
             <Button onClick={isCreating?handleCreate:handleSave}>{isCreating?"Create":"Save"}</Button>
           </DialogFooter>
@@ -172,7 +245,24 @@ function MonthView({ currentDate, events, onEventClick }: { currentDate: Date; e
               <div className={cn("mb-1 h-6 w-6 flex items-center justify-center rounded-full text-xs", isToday && "bg-primary text-primary-foreground font-semibold")}>{d.getDate()}</div>
               <div className="space-y-1">
                 {dayEvents.slice(0,3).map((e)=> (
-                  <button key={e.id} onClick={()=>onEventClick(e)} className="w-full truncate rounded bg-primary px-2 py-1 text-left text-[11px] text-primary-foreground">{e.title}</button>
+                  <button 
+                    key={e.id} 
+                    onClick={()=>onEventClick(e)} 
+                    className={cn(
+                      "w-full truncate rounded px-2 py-1 text-left text-[11px] relative",
+                      e.color === "red" && "bg-red-500 text-white",
+                      e.color === "blue" && "bg-blue-500 text-white",
+                      e.color === "green" && "bg-green-500 text-white",
+                      e.color === "yellow" && "bg-yellow-500 text-black",
+                      e.color === "purple" && "bg-purple-500 text-white",
+                      e.color === "orange" && "bg-orange-500 text-white",
+                      e.completed && "opacity-50 line-through"
+                    )}
+                  >
+                    {e.completed && "✓ "}
+                    {e.title}
+                    {e.eventGroupId && <span className="ml-1 text-[9px]">📅</span>}
+                  </button>
                 ))}
                 {dayEvents.length>3 && <div className="text-[10px] text-muted-foreground">+{dayEvents.length-3} more</div>}
               </div>
@@ -203,7 +293,24 @@ function WeekView({ currentDate, events, onEventClick }: { currentDate: Date; ev
               const ev = events.filter((e)=> sameDay(e.startTime, d) && e.startTime.getHours()===h)
               return (
                 <div key={`${d.toISOString()}-${h}`} className="min-h-16 border-b border-r last:border-r-0 p-1">
-                  {ev.map((e)=> <button key={e.id} onClick={()=>onEventClick(e)} className="w-full truncate rounded bg-primary px-2 py-1 text-left text-[11px] text-primary-foreground">{e.title}</button>)}
+                  {ev.map((e)=> (
+                    <button 
+                      key={e.id} 
+                      onClick={()=>onEventClick(e)} 
+                      className={cn(
+                        "w-full truncate rounded px-2 py-1 text-left text-[11px] mb-1",
+                        e.color === "red" && "bg-red-500 text-white",
+                        e.color === "blue" && "bg-blue-500 text-white",
+                        e.color === "green" && "bg-green-500 text-white",
+                        e.color === "yellow" && "bg-yellow-500 text-black",
+                        e.color === "purple" && "bg-purple-500 text-white",
+                        e.color === "orange" && "bg-orange-500 text-white",
+                        e.completed && "opacity-50 line-through"
+                      )}
+                    >
+                      {e.completed && "✓ "}{e.title}{e.eventGroupId && " 📅"}
+                    </button>
+                  ))}
                 </div>
               )
             })}
@@ -226,8 +333,19 @@ function DayView({ currentDate, events, onEventClick }: { currentDate: Date; eve
             <div className="w-20 border-r p-3 text-sm text-muted-foreground">{String(h).padStart(2,"0")}:00</div>
             <div className="flex-1 p-2">
               {slot.map((e)=> (
-                <button key={e.id} onClick={()=>onEventClick(e)} className="mb-2 w-full rounded border px-2 py-2 text-left">
-                  <div className="text-sm font-medium">{e.title}</div>
+                <button 
+                  key={e.id} 
+                  onClick={()=>onEventClick(e)} 
+                  className={cn(
+                    "mb-2 w-full rounded border px-2 py-2 text-left",
+                    e.completed && "opacity-50"
+                  )}
+                >
+                  <div className={cn("text-sm font-medium flex items-center gap-1", e.completed && "line-through")}>
+                    {e.completed && "✓ "}{e.title}
+                    {e.eventGroupId && <span className="text-[10px]">📅</span>}
+                    {e.diveType && <span className="text-[10px] px-1 rounded bg-accent">{e.diveType}</span>}
+                  </div>
                   <div className="text-xs text-muted-foreground">{fmtTime(e.startTime)} - {fmtTime(e.endTime)}</div>
                 </button>
               ))}
@@ -253,9 +371,29 @@ function ListView({ events, onEventClick }: { events: Event[]; onEventClick: (e:
           <h3 className="mb-2 text-sm font-semibold text-muted-foreground">{date}</h3>
           <div className="space-y-2">
             {items.map((e)=> (
-              <button key={e.id} onClick={()=>onEventClick(e)} className="w-full rounded-lg border bg-card p-3 text-left hover:shadow-sm">
+              <button 
+                key={e.id} 
+                onClick={()=>onEventClick(e)} 
+                className={cn(
+                  "w-full rounded-lg border bg-card p-3 text-left hover:shadow-sm",
+                  e.completed && "opacity-50"
+                )}
+              >
                 <div className="flex items-center justify-between">
-                  <div className="font-semibold">{e.title}</div>
+                  <div className={cn("font-semibold flex items-center gap-2", e.completed && "line-through")}>
+                    {e.completed && "✓"}
+                    <span>{e.title}</span>
+                    {e.eventGroupId && (
+                      <span className="text-xs font-normal px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground" title="Multi-day event">
+                        📅
+                      </span>
+                    )}
+                    {e.diveType && (
+                      <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-accent">
+                        {e.diveType}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground">{fmtTime(e.startTime)} - {fmtTime(e.endTime)}</div>
                 </div>
               </button>

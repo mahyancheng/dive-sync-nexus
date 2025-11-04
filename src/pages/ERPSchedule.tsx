@@ -156,8 +156,11 @@ const ERPSchedule = () => {
           description: event.description || undefined,
           startTime: new Date(event.start_time),
           endTime: new Date(event.end_time),
-          color: "blue",
+          color: event.color || "blue",
           category: event.category || "custom",
+          completed: event.completed || false,
+          diveType: event.dive_type || undefined,
+          eventGroupId: event.event_group_id || undefined,
         });
       });
     }
@@ -169,24 +172,78 @@ const ERPSchedule = () => {
   const handleEventCreate = async (event: Omit<EventManagerEvent, "id">) => {
     if (!diveCenterId) return;
     
-    // Create custom event in database
-    const { error } = await supabase
-      .from("custom_events")
-      .insert({
-        dive_center_id: diveCenterId,
-        title: event.title,
-        description: event.description,
-        start_time: event.startTime.toISOString(),
-        end_time: event.endTime.toISOString(),
-        category: event.category || "custom",
-      });
+    const startDate = new Date(event.startTime);
+    const endDate = new Date(event.endTime);
+    const isMultiDay = startDate.toDateString() !== endDate.toDateString();
+    
+    if (isMultiDay) {
+      // Create one event per day with a shared group ID
+      const groupId = crypto.randomUUID();
+      const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      const events = [];
+      for (let i = 0; i < days; i++) {
+        const dayStart = new Date(startDate);
+        dayStart.setDate(startDate.getDate() + i);
+        dayStart.setHours(startDate.getHours(), startDate.getMinutes(), 0, 0);
+        
+        const dayEnd = new Date(dayStart);
+        if (i === days - 1) {
+          // Last day uses the original end time
+          dayEnd.setHours(endDate.getHours(), endDate.getMinutes(), 0, 0);
+        } else {
+          // Other days end at same time as start
+          dayEnd.setHours(event.endTime.getHours(), event.endTime.getMinutes(), 0, 0);
+        }
+        
+        events.push({
+          dive_center_id: diveCenterId,
+          title: event.title,
+          description: event.description,
+          start_time: dayStart.toISOString(),
+          end_time: dayEnd.toISOString(),
+          category: event.category || "custom",
+          color: event.color || "blue",
+          completed: false,
+          dive_type: event.diveType,
+          event_group_id: groupId,
+        });
+      }
+      
+      const { error } = await supabase
+        .from("custom_events")
+        .insert(events);
 
-    if (error) {
-      toast.error("Failed to create event");
-      console.error(error);
+      if (error) {
+        toast.error("Failed to create multi-day event");
+        console.error(error);
+      } else {
+        toast.success(`Multi-day event created (${days} days)`);
+        fetchEvents();
+      }
     } else {
-      toast.success("Event created successfully");
-      fetchEvents();
+      // Single day event
+      const { error } = await supabase
+        .from("custom_events")
+        .insert({
+          dive_center_id: diveCenterId,
+          title: event.title,
+          description: event.description,
+          start_time: event.startTime.toISOString(),
+          end_time: event.endTime.toISOString(),
+          category: event.category || "custom",
+          color: event.color || "blue",
+          completed: false,
+          dive_type: event.diveType,
+        });
+
+      if (error) {
+        toast.error("Failed to create event");
+        console.error(error);
+      } else {
+        toast.success("Event created successfully");
+        fetchEvents();
+      }
     }
   };
 
@@ -210,24 +267,57 @@ const ERPSchedule = () => {
         fetchEvents();
       }
     } else if (prefix === "custom") {
-      // Update custom event
+      // Check if this is part of a group
+      const { data: eventData } = await supabase
+        .from("custom_events")
+        .select("event_group_id")
+        .eq("id", dbId)
+        .single();
+
       const updateData: any = {};
-      if (event.title) updateData.title = event.title;
+      if (event.title !== undefined) updateData.title = event.title;
       if (event.description !== undefined) updateData.description = event.description;
       if (event.startTime) updateData.start_time = event.startTime.toISOString();
       if (event.endTime) updateData.end_time = event.endTime.toISOString();
       if (event.category) updateData.category = event.category;
+      if (event.color !== undefined) updateData.color = event.color;
+      if (event.completed !== undefined) updateData.completed = event.completed;
+      if (event.diveType !== undefined) updateData.dive_type = event.diveType;
 
-      const { error } = await supabase
-        .from("custom_events")
-        .update(updateData)
-        .eq("id", dbId);
+      if (eventData?.event_group_id) {
+        // Update all events in the group (except dates)
+        const groupUpdateData: any = {};
+        if (event.title !== undefined) groupUpdateData.title = event.title;
+        if (event.description !== undefined) groupUpdateData.description = event.description;
+        if (event.category) groupUpdateData.category = event.category;
+        if (event.color !== undefined) groupUpdateData.color = event.color;
+        if (event.completed !== undefined) groupUpdateData.completed = event.completed;
+        if (event.diveType !== undefined) groupUpdateData.dive_type = event.diveType;
 
-      if (error) {
-        toast.error("Failed to update event");
+        const { error } = await supabase
+          .from("custom_events")
+          .update(groupUpdateData)
+          .eq("event_group_id", eventData.event_group_id);
+
+        if (error) {
+          toast.error("Failed to update multi-day event");
+        } else {
+          toast.success("Multi-day event updated");
+          fetchEvents();
+        }
       } else {
-        toast.success("Event updated");
-        fetchEvents();
+        // Single event update
+        const { error } = await supabase
+          .from("custom_events")
+          .update(updateData)
+          .eq("id", dbId);
+
+        if (error) {
+          toast.error("Failed to update event");
+        } else {
+          toast.success("Event updated");
+          fetchEvents();
+        }
       }
     }
   };
@@ -236,16 +326,39 @@ const ERPSchedule = () => {
     const [prefix, dbId] = id.split("-");
     
     if (prefix === "custom") {
-      const { error } = await supabase
+      // Check if this is part of a group
+      const { data: eventData } = await supabase
         .from("custom_events")
-        .delete()
-        .eq("id", dbId);
+        .select("event_group_id")
+        .eq("id", dbId)
+        .single();
 
-      if (error) {
-        toast.error("Failed to delete event");
+      if (eventData?.event_group_id) {
+        // Delete all events in the group
+        const { error } = await supabase
+          .from("custom_events")
+          .delete()
+          .eq("event_group_id", eventData.event_group_id);
+
+        if (error) {
+          toast.error("Failed to delete multi-day event");
+        } else {
+          toast.success("Multi-day event deleted");
+          fetchEvents();
+        }
       } else {
-        toast.success("Event deleted");
-        fetchEvents();
+        // Single event delete
+        const { error } = await supabase
+          .from("custom_events")
+          .delete()
+          .eq("id", dbId);
+
+        if (error) {
+          toast.error("Failed to delete event");
+        } else {
+          toast.success("Event deleted");
+          fetchEvents();
+        }
       }
     } else {
       toast.error("Cannot delete system events");

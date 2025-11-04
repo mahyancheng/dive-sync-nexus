@@ -149,10 +149,14 @@ export type Database = {
       custom_events: {
         Row: {
           category: string | null
+          color: string | null
+          completed: boolean | null
           created_at: string
           description: string | null
           dive_center_id: string
+          dive_type: string | null
           end_time: string
+          event_group_id: string | null
           id: string
           start_time: string
           title: string
@@ -160,10 +164,14 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          color?: string | null
+          completed?: boolean | null
           created_at?: string
           description?: string | null
           dive_center_id: string
+          dive_type?: string | null
           end_time: string
+          event_group_id?: string | null
           id?: string
           start_time: string
           title: string
@@ -171,10 +179,14 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          color?: string | null
+          completed?: boolean | null
           created_at?: string
           description?: string | null
           dive_center_id?: string
+          dive_type?: string | null
           end_time?: string
+          event_group_id?: string | null
           id?: string
           start_time?: string
           title?: string
