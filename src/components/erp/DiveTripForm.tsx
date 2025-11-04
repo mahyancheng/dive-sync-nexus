@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,12 @@ const generalInfoSchema = z.object({
   medical_conditions: z.string().trim().max(500).optional(),
 });
 
+type EquipmentRequest = {
+  equipment_type: string;
+  needed: boolean;
+  size?: string;
+};
+
 export const DiveTripForm = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
@@ -30,6 +36,8 @@ export const DiveTripForm = () => {
   const [loading, setLoading] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [availableEquipmentTypes, setAvailableEquipmentTypes] = useState<string[]>([]);
+  const [equipmentRequests, setEquipmentRequests] = useState<EquipmentRequest[]>([]);
   
   const [formData, setFormData] = useState({
     participant_name: "",
@@ -41,16 +49,42 @@ export const DiveTripForm = () => {
     emergency_contact_name: "",
     emergency_contact_phone: "",
     medical_conditions: "",
-    regulator_needed: false,
-    bcd_needed: false,
-    bcd_size: "",
-    fins_needed: false,
-    fins_size: "",
-    mask_needed: false,
-    wetsuit_needed: false,
-    wetsuit_size: "",
     equipment_notes: "",
   });
+
+  useEffect(() => {
+    fetchEquipmentTypes();
+  }, []);
+
+  const fetchEquipmentTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("dive_equipment")
+        .select("equipment_type")
+        .eq("status", "available");
+
+      if (error) throw error;
+
+      const uniqueTypes = [...new Set(data?.map(item => item.equipment_type) || [])];
+      setAvailableEquipmentTypes(uniqueTypes);
+      setEquipmentRequests(uniqueTypes.map(type => ({ equipment_type: type, needed: false, size: "" })));
+    } catch (error) {
+      console.error("Error fetching equipment types:", error);
+    }
+  };
+
+  const equipmentNeedsSize = (type: string) => {
+    const sizableTypes = ["BCD", "Fins", "Wetsuit"];
+    return sizableTypes.some(t => type.toLowerCase().includes(t.toLowerCase()));
+  };
+
+  const handleEquipmentChange = (index: number, field: "needed" | "size", value: any) => {
+    setEquipmentRequests(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -151,19 +185,19 @@ export const DiveTripForm = () => {
 
       if (participantError) throw participantError;
 
-      // Create equipment rental request
-      await supabase.from("equipment_rental_requests").insert({
-        participant_id: participant.id,
-        regulator_needed: formData.regulator_needed,
-        bcd_needed: formData.bcd_needed,
-        bcd_size: formData.bcd_size || null,
-        fins_needed: formData.fins_needed,
-        fins_size: formData.fins_size || null,
-        mask_needed: formData.mask_needed,
-        wetsuit_needed: formData.wetsuit_needed,
-        wetsuit_size: formData.wetsuit_size || null,
-        notes: formData.equipment_notes || null,
-      });
+      // Create equipment rental requests for each needed equipment
+      const equipmentInserts = equipmentRequests
+        .filter(req => req.needed)
+        .map(req => ({
+          participant_id: participant.id,
+          equipment_type: req.equipment_type,
+          size: req.size || null,
+          notes: formData.equipment_notes || null,
+        }));
+
+      if (equipmentInserts.length > 0) {
+        await supabase.from("equipment_rental_requests").insert(equipmentInserts);
+      }
 
       // Create waiver signature
       await supabase.from("waiver_signatures").insert({
@@ -305,94 +339,45 @@ export const DiveTripForm = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Equipment Rental</h3>
                   
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="regulator"
-                        checked={formData.regulator_needed}
-                        onCheckedChange={(checked) => handleInputChange("regulator_needed", checked)}
-                      />
-                      <Label htmlFor="regulator">Regulator</Label>
-                    </div>
+                  {availableEquipmentTypes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Loading available equipment...</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {equipmentRequests.map((request, index) => (
+                        <div key={request.equipment_type} className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`equipment-${index}`}
+                              checked={request.needed}
+                              onCheckedChange={(checked) => handleEquipmentChange(index, "needed", checked)}
+                            />
+                            <Label htmlFor={`equipment-${index}`}>{request.equipment_type}</Label>
+                          </div>
+                          {request.needed && equipmentNeedsSize(request.equipment_type) && (
+                            <Input
+                              placeholder={`Size (${request.equipment_type.includes("Fins") ? "e.g., 8, 9, 10" : "S/M/L/XL"})`}
+                              value={request.size}
+                              onChange={(e) => handleEquipmentChange(index, "size", e.target.value)}
+                              maxLength={10}
+                              className="ml-6"
+                            />
+                          )}
+                        </div>
+                      ))}
 
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="bcd"
-                          checked={formData.bcd_needed}
-                          onCheckedChange={(checked) => handleInputChange("bcd_needed", checked)}
+                      <div className="space-y-2 mt-4">
+                        <Label htmlFor="equipmentNotes">Additional Equipment Notes</Label>
+                        <Textarea
+                          id="equipmentNotes"
+                          value={formData.equipment_notes}
+                          onChange={(e) => handleInputChange("equipment_notes", e.target.value)}
+                          placeholder="Any special requirements or preferences?"
+                          maxLength={500}
+                          rows={2}
                         />
-                        <Label htmlFor="bcd">BCD (Buoyancy Control Device)</Label>
                       </div>
-                      {formData.bcd_needed && (
-                        <Input
-                          placeholder="Size (S/M/L/XL)"
-                          value={formData.bcd_size}
-                          onChange={(e) => handleInputChange("bcd_size", e.target.value)}
-                          maxLength={10}
-                        />
-                      )}
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="fins"
-                          checked={formData.fins_needed}
-                          onCheckedChange={(checked) => handleInputChange("fins_needed", checked)}
-                        />
-                        <Label htmlFor="fins">Fins</Label>
-                      </div>
-                      {formData.fins_needed && (
-                        <Input
-                          placeholder="Size (e.g., 8, 9, 10)"
-                          value={formData.fins_size}
-                          onChange={(e) => handleInputChange("fins_size", e.target.value)}
-                          maxLength={10}
-                        />
-                      )}
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="mask"
-                        checked={formData.mask_needed}
-                        onCheckedChange={(checked) => handleInputChange("mask_needed", checked)}
-                      />
-                      <Label htmlFor="mask">Mask</Label>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="wetsuit"
-                          checked={formData.wetsuit_needed}
-                          onCheckedChange={(checked) => handleInputChange("wetsuit_needed", checked)}
-                        />
-                        <Label htmlFor="wetsuit">Wetsuit</Label>
-                      </div>
-                      {formData.wetsuit_needed && (
-                        <Input
-                          placeholder="Size (XS/S/M/L/XL/XXL)"
-                          value={formData.wetsuit_size}
-                          onChange={(e) => handleInputChange("wetsuit_size", e.target.value)}
-                          maxLength={10}
-                        />
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="equipmentNotes">Additional Equipment Notes</Label>
-                      <Textarea
-                        id="equipmentNotes"
-                        value={formData.equipment_notes}
-                        onChange={(e) => handleInputChange("equipment_notes", e.target.value)}
-                        placeholder="Any special requirements or preferences?"
-                        maxLength={500}
-                        rows={2}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <Button onClick={handleStep1Next} className="w-full">

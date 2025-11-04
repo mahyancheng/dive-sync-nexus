@@ -766,6 +766,7 @@ export type Database = {
           bcd_needed: boolean | null
           bcd_size: string | null
           created_at: string
+          equipment_type: string | null
           fins_needed: boolean | null
           fins_size: string | null
           id: string
@@ -773,6 +774,7 @@ export type Database = {
           notes: string | null
           participant_id: string
           regulator_needed: boolean | null
+          size: string | null
           wetsuit_needed: boolean | null
           wetsuit_size: string | null
         }
@@ -780,6 +782,7 @@ export type Database = {
           bcd_needed?: boolean | null
           bcd_size?: string | null
           created_at?: string
+          equipment_type?: string | null
           fins_needed?: boolean | null
           fins_size?: string | null
           id?: string
@@ -787,6 +790,7 @@ export type Database = {
           notes?: string | null
           participant_id: string
           regulator_needed?: boolean | null
+          size?: string | null
           wetsuit_needed?: boolean | null
           wetsuit_size?: string | null
         }
@@ -794,6 +798,7 @@ export type Database = {
           bcd_needed?: boolean | null
           bcd_size?: string | null
           created_at?: string
+          equipment_type?: string | null
           fins_needed?: boolean | null
           fins_size?: string | null
           id?: string
@@ -801,6 +806,7 @@ export type Database = {
           notes?: string | null
           participant_id?: string
           regulator_needed?: boolean | null
+          size?: string | null
           wetsuit_needed?: boolean | null
           wetsuit_size?: string | null
         }

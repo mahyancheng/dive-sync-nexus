@@ -22,9 +22,11 @@ interface Assignment {
 
 interface InventoryItem {
   id: string;
-  name?: string;
+  name: string;
   tank_number?: string;
   equipment_type?: string;
+  size?: string;
+  status: string;
 }
 
 interface InventoryAssignmentProps {
@@ -67,20 +69,33 @@ export const InventoryAssignment = ({
     try {
       let query;
       if (inventoryType === "tank") {
-        query = supabase.from("dive_tanks").select("id, tank_number as name");
+        query = supabase.from("dive_tanks").select("id, tank_number, status");
       } else if (inventoryType === "boat") {
-        query = supabase.from("boats").select("id, name");
+        query = supabase.from("boats").select("id, name, status");
       } else {
-        query = supabase.from("dive_equipment").select("id, equipment_type");
+        query = supabase.from("dive_equipment").select("id, equipment_type, size, status");
       }
 
       const { data, error } = await query;
       if (error) throw error;
       
-      setInventoryItems(data?.map(item => ({
-        ...item,
-        name: item.name || item.equipment_type
-      })) || []);
+      const mapped = data?.map(item => {
+        let displayName = "";
+        if (inventoryType === "tank") {
+          displayName = `Tank ${item.tank_number}`;
+        } else if (inventoryType === "boat") {
+          displayName = item.name;
+        } else {
+          displayName = item.size ? `${item.equipment_type} (${item.size})` : item.equipment_type;
+        }
+        return {
+          ...item,
+          name: displayName,
+          status: item.status || "available"
+        };
+      }) || [];
+      
+      setInventoryItems(mapped);
     } catch (error) {
       console.error("Error fetching inventory:", error);
     }
@@ -168,14 +183,79 @@ export const InventoryAssignment = ({
     return "equipment_id";
   };
 
+  const autoAssign = async () => {
+    const unassignedParticipants = participants.filter(
+      p => !assignments.some(a => a.participant_id === p.id)
+    );
+    
+    if (unassignedParticipants.length === 0) {
+      toast.info("All participants already assigned");
+      return;
+    }
+
+    const availableItems = inventoryItems.filter(item => item.status === "available");
+    
+    if (availableItems.length === 0) {
+      toast.error(`No available ${inventoryType}s`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const newAssignments = unassignedParticipants.slice(0, availableItems.length).map((participant, index) => {
+        const insertData: any = {
+          event_id: eventId,
+          inventory_type: inventoryType,
+          participant_id: participant.id,
+        };
+
+        if (inventoryType === "tank") {
+          insertData.tank_id = availableItems[index].id;
+        } else if (inventoryType === "boat") {
+          insertData.boat_id = availableItems[index].id;
+        } else {
+          insertData.equipment_id = availableItems[index].id;
+        }
+
+        return insertData;
+      });
+
+      const { error } = await supabase
+        .from("event_inventory_assignments")
+        .insert(newAssignments);
+
+      if (error) throw error;
+      
+      toast.success(`Auto-assigned ${newAssignments.length} ${inventoryType}(s)`);
+      fetchAssignments();
+    } catch (error) {
+      console.error("Error auto-assigning:", error);
+      toast.error("Failed to auto-assign");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const availableCount = inventoryItems.filter(item => item.status === "available").length;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold capitalize">{inventoryType} Assignments</h3>
-        <Button size="sm" onClick={addAssignment} disabled={loading}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Assignment
-        </Button>
+        <div>
+          <h3 className="font-semibold capitalize">{inventoryType} Assignments</h3>
+          <p className="text-sm text-muted-foreground">
+            {availableCount} of {inventoryItems.length} available
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={autoAssign} disabled={loading}>
+            Auto Assign (FIFO)
+          </Button>
+          <Button size="sm" onClick={addAssignment} disabled={loading}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Assignment
+          </Button>
+        </div>
       </div>
 
       {assignments.length === 0 ? (
@@ -205,8 +285,8 @@ export const InventoryAssignment = ({
                     </SelectTrigger>
                     <SelectContent>
                       {inventoryItems.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.name}
+                        <SelectItem key={item.id} value={item.id} disabled={item.status !== "available" && assignment[getInventoryIdField()] !== item.id}>
+                          {item.name} {item.status !== "available" && `(${item.status})`}
                         </SelectItem>
                       ))}
                     </SelectContent>
