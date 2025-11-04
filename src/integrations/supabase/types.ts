@@ -146,6 +146,50 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_events: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          dive_center_id: string
+          end_time: string
+          id: string
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          dive_center_id: string
+          end_time: string
+          id?: string
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          dive_center_id?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_events_dive_center_id_fkey"
+            columns: ["dive_center_id"]
+            isOneToOne: false
+            referencedRelation: "dive_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_forms: {
         Row: {
           created_at: string

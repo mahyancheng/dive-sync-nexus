@@ -2,15 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, Grid3x3, List } from "lucide-react";
+import { Calendar, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
-import { CalendarView } from "@/components/erp/CalendarView";
-import { EventsList } from "@/components/erp/EventsList";
-import { EventDetailDialog } from "@/components/erp/EventDetailDialog";
-import { CreateEventDialog } from "@/components/erp/CreateEventDialog";
+import { EventManager, type Event as EventManagerEvent } from "@/components/ui/event-manager";
 
-interface Event {
+interface DBEvent {
   id: string;
   title: string;
   description?: string;
@@ -25,13 +22,9 @@ interface Event {
 
 const ERPSchedule = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [events, setEvents] = useState<EventManagerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [eventDetailOpen, setEventDetailOpen] = useState(false);
-  const [view, setView] = useState<"calendar" | "list">("calendar");
 
   useEffect(() => {
     checkAccessAndFetch();
@@ -107,21 +100,29 @@ const ERPSchedule = () => {
       .select("*")
       .eq("dive_center_id", centers.id);
 
-    const allEvents: Event[] = [];
+    // Fetch custom events
+    const { data: customEvents } = await supabase
+      .from("custom_events")
+      .select("*")
+      .eq("dive_center_id", centers.id);
+
+    const allEvents: EventManagerEvent[] = [];
 
     // Convert bookings to events
     if (bookings) {
       bookings.forEach(booking => {
+        const startTime = new Date(booking.dive_date);
+        const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000); // Add 2 hours
+        const priority = booking.status === "confirmed" ? "high" : "medium";
+        
         allEvents.push({
           id: `booking-${booking.id}`,
           title: (experiencesMap[booking.experience_id]?.title as string | undefined) || booking.group_name || "Dive Booking",
-          description: `${booking.participants_count} divers - ${booking.dive_type || "Custom"}`,
-          date: new Date(booking.dive_date),
-          location: booking.location || (experiencesMap[booking.experience_id]?.location as string | undefined) || undefined,
-          type: "booking",
-          priority: booking.status === "confirmed" ? "high" : "medium",
-          bookingId: booking.id,
-          status: booking.status
+          description: `${booking.participants_count} divers - ${booking.dive_type || "Custom"}${booking.location || experiencesMap[booking.experience_id]?.location ? ` at ${booking.location || experiencesMap[booking.experience_id]?.location}` : ''}`,
+          startTime,
+          endTime,
+          color: priority === "high" ? "red" : priority === "medium" ? "yellow" : "green",
+          category: "booking",
         });
       });
     }
@@ -130,15 +131,34 @@ const ERPSchedule = () => {
     if (maintenance) {
       maintenance.forEach(maint => {
         if (maint.next_due_date) {
+          const startTime = new Date(maint.next_due_date);
+          const endTime = new Date(startTime.getTime() + 1 * 60 * 60 * 1000); // Add 1 hour
+          
           allEvents.push({
             id: `maintenance-${maint.id}`,
             title: `Maintenance: ${maint.maintenance_type}`,
-            description: maint.description,
-            date: new Date(maint.next_due_date),
-            type: "maintenance",
-            priority: "medium"
+            description: maint.description || undefined,
+            startTime,
+            endTime,
+            color: "yellow",
+            category: "maintenance",
           });
         }
+      });
+    }
+
+    // Convert custom events
+    if (customEvents) {
+      customEvents.forEach(event => {
+        allEvents.push({
+          id: `custom-${event.id}`,
+          title: event.title,
+          description: event.description || undefined,
+          startTime: new Date(event.start_time),
+          endTime: new Date(event.end_time),
+          color: "blue",
+          category: event.category || "custom",
+        });
       });
     }
 
@@ -146,11 +166,89 @@ const ERPSchedule = () => {
     setLoading(false);
   };
 
-  const handleEventClick = (eventId: string) => {
-    const event = events.find(e => e.id === eventId);
-    if (event) {
-      setSelectedEvent(event);
-      setEventDetailOpen(true);
+  const handleEventCreate = async (event: Omit<EventManagerEvent, "id">) => {
+    if (!diveCenterId) return;
+    
+    // Create custom event in database
+    const { error } = await supabase
+      .from("custom_events")
+      .insert({
+        dive_center_id: diveCenterId,
+        title: event.title,
+        description: event.description,
+        start_time: event.startTime.toISOString(),
+        end_time: event.endTime.toISOString(),
+        category: event.category || "custom",
+      });
+
+    if (error) {
+      toast.error("Failed to create event");
+      console.error(error);
+    } else {
+      toast.success("Event created successfully");
+      fetchEvents();
+    }
+  };
+
+  const handleEventUpdate = async (id: string, event: Partial<EventManagerEvent>) => {
+    // Extract the actual database ID from the prefixed ID
+    const [prefix, dbId] = id.split("-");
+    
+    if (prefix === "booking") {
+      // Update booking
+      const { error } = await supabase
+        .from("dive_bookings")
+        .update({
+          dive_date: event.startTime?.toISOString().split("T")[0],
+        })
+        .eq("id", dbId);
+
+      if (error) {
+        toast.error("Failed to update event");
+      } else {
+        toast.success("Event updated");
+        fetchEvents();
+      }
+    } else if (prefix === "custom") {
+      // Update custom event
+      const updateData: any = {};
+      if (event.title) updateData.title = event.title;
+      if (event.description !== undefined) updateData.description = event.description;
+      if (event.startTime) updateData.start_time = event.startTime.toISOString();
+      if (event.endTime) updateData.end_time = event.endTime.toISOString();
+      if (event.category) updateData.category = event.category;
+
+      const { error } = await supabase
+        .from("custom_events")
+        .update(updateData)
+        .eq("id", dbId);
+
+      if (error) {
+        toast.error("Failed to update event");
+      } else {
+        toast.success("Event updated");
+        fetchEvents();
+      }
+    }
+  };
+
+  const handleEventDelete = async (id: string) => {
+    const [prefix, dbId] = id.split("-");
+    
+    if (prefix === "custom") {
+      const { error } = await supabase
+        .from("custom_events")
+        .delete()
+        .eq("id", dbId);
+
+      if (error) {
+        toast.error("Failed to delete event");
+      } else {
+        toast.success("Event deleted");
+        fetchEvents();
+      }
+    } else {
+      toast.error("Cannot delete system events");
     }
   };
 
@@ -160,51 +258,21 @@ const ERPSchedule = () => {
       
       <main className="container mx-auto px-4 pt-20 pb-24">
         <div className="flex flex-col gap-4 mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/erp")}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                  <Calendar className="w-8 h-8 text-primary" />
-                  Calendar Management
-                </h1>
-                <p className="text-sm text-muted-foreground">View and manage all scheduled events</p>
-              </div>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/erp")}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-3">
+                <Calendar className="w-8 h-8 text-primary" />
+                Calendar Management
+              </h1>
+              <p className="text-sm text-muted-foreground">View and manage all scheduled events</p>
             </div>
-            {diveCenterId && (
-              <CreateEventDialog 
-                diveCenterId={diveCenterId} 
-                onEventCreated={fetchEvents}
-              />
-            )}
-          </div>
-
-          {/* View Switcher */}
-          <div className="flex items-center gap-1 rounded-lg border bg-background p-1 w-fit">
-            <Button 
-              variant={view === "calendar" ? "secondary" : "ghost"} 
-              size="sm" 
-              onClick={() => setView("calendar")} 
-              className="h-8"
-            >
-              <Grid3x3 className="h-4 w-4" />
-              <span className="ml-2">Calendar</span>
-            </Button>
-            <Button 
-              variant={view === "list" ? "secondary" : "ghost"} 
-              size="sm" 
-              onClick={() => setView("list")} 
-              className="h-8"
-            >
-              <List className="h-4 w-4" />
-              <span className="ml-2">List</span>
-            </Button>
           </div>
         </div>
 
@@ -212,45 +280,13 @@ const ERPSchedule = () => {
           <div className="text-center py-12 text-muted-foreground">
             Loading calendar...
           </div>
-        ) : view === "calendar" ? (
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-            {/* Calendar View - 3 columns */}
-            <div className="xl:col-span-3">
-              <CalendarView
-                events={events}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-              />
-            </div>
-
-            {/* Events List - 1 column */}
-            <div>
-              <EventsList
-                events={events}
-                onEventClick={handleEventClick}
-                selectedDate={selectedDate}
-                onClearFilters={() => setSelectedDate(null)}
-              />
-            </div>
-          </div>
         ) : (
-          /* List View - Full Width Events List */
-          <EventsList
+          <EventManager
             events={events}
-            onEventClick={handleEventClick}
-            selectedDate={selectedDate}
-            onClearFilters={() => setSelectedDate(null)}
-          />
-        )}
-
-        {/* Event Detail Dialog */}
-        {diveCenterId && (
-          <EventDetailDialog
-            event={selectedEvent}
-            diveCenterId={diveCenterId}
-            open={eventDetailOpen}
-            onOpenChange={setEventDetailOpen}
-            onUpdated={fetchEvents}
+            onEventCreate={handleEventCreate}
+            onEventUpdate={handleEventUpdate}
+            onEventDelete={handleEventDelete}
+            defaultView="month"
           />
         )}
       </main>
