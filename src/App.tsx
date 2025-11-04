@@ -21,9 +21,11 @@ import ERP from "./pages/ERP";
 import ERPSchedule from "./pages/ERPSchedule";
 import ERPEquipment from "./pages/ERPEquipment";
 import ERPMarketplace from "./pages/ERPMarketplace";
+import ERPCustomers from "./pages/ERPCustomers";
 import Market from "./pages/Market";
 import ERPFinance from "./pages/ERPFinance";
 import EquipmentRequest from "./pages/EquipmentRequest";
+import { DiveTripForm } from "./components/erp/DiveTripForm";
 
 const queryClient = new QueryClient();
 
@@ -63,9 +65,11 @@ const App = () => (
           <Route path="/erp/schedule" element={<ERPSchedule />} />
           <Route path="/erp/equipment" element={<ERPEquipment />} />
           <Route path="/erp/marketplace" element={<ERPMarketplace />} />
+          <Route path="/erp/customers" element={<ERPCustomers />} />
           <Route path="/market" element={<Market />} />
           <Route path="/erp/finance" element={<ERPFinance />} />
           <Route path="/equipment-request/:bookingId" element={<EquipmentRequest />} />
+          <Route path="/dive-trip-form/:eventId" element={<DiveTripForm />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

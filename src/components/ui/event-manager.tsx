@@ -29,6 +29,7 @@ export interface EventManagerProps {
   onEventCreate?: (event: Omit<Event, "id">) => void
   onEventUpdate?: (id: string, event: Partial<Event>) => void
   onEventDelete?: (id: string) => void
+  onEventClick?: (eventId: string) => void
   categories?: string[]
   colors?: { name: string; value: string; bg: string; text: string }[]
   defaultView?: "month" | "week" | "day" | "list"
@@ -43,6 +44,7 @@ export function EventManager({
   onEventCreate,
   onEventUpdate,
   onEventDelete,
+  onEventClick,
   defaultView = "month",
   className,
 }: EventManagerProps) {
@@ -116,10 +118,10 @@ export function EventManager({
       </div>
 
       {/* Views */}
-      {view==="month" && <MonthView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{setSelectedEvent(e); setIsDialogOpen(true)}} />}
-      {view==="week" && <WeekView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{setSelectedEvent(e); setIsDialogOpen(true)}} />}
-      {view==="day" && <DayView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{setSelectedEvent(e); setIsDialogOpen(true)}} />}
-      {view==="list" && <ListView events={filteredEvents} onEventClick={(e)=>{setSelectedEvent(e); setIsDialogOpen(true)}} />}
+      {view==="month" && <MonthView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id); setSelectedEvent(e); setIsDialogOpen(true)}} />}
+      {view==="week" && <WeekView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id); setSelectedEvent(e); setIsDialogOpen(true)}} />}
+      {view==="day" && <DayView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id); setSelectedEvent(e); setIsDialogOpen(true)}} />}
+      {view==="list" && <ListView events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id); setSelectedEvent(e); setIsDialogOpen(true)}} />}
 
       {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

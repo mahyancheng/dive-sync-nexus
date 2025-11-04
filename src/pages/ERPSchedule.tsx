@@ -6,6 +6,7 @@ import { Calendar, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
 import { EventManager, type Event as EventManagerEvent } from "@/components/ui/event-manager";
+import { EventDetailDialog } from "@/components/erp/EventDetailDialog";
 
 interface DBEvent {
   id: string;
@@ -25,6 +26,8 @@ const ERPSchedule = () => {
   const [events, setEvents] = useState<EventManagerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   useEffect(() => {
     checkAccessAndFetch();
@@ -399,9 +402,19 @@ const ERPSchedule = () => {
             onEventCreate={handleEventCreate}
             onEventUpdate={handleEventUpdate}
             onEventDelete={handleEventDelete}
+            onEventClick={(eventId) => {
+              setSelectedEventId(eventId.replace(/^(booking|maintenance|custom)-/, ''));
+              setDetailDialogOpen(true);
+            }}
             defaultView="month"
           />
         )}
+
+        <EventDetailDialog
+          eventId={selectedEventId}
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+        />
       </main>
     </div>
   );

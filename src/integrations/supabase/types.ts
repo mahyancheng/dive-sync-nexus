@@ -653,6 +653,62 @@ export type Database = {
           },
         ]
       }
+      dive_trip_participants: {
+        Row: {
+          created_at: string
+          dive_cert_level: string | null
+          dive_cert_number: string | null
+          email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          event_id: string
+          ic_passport_number: string
+          id: string
+          medical_conditions: string | null
+          participant_name: string
+          phone_number: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dive_cert_level?: string | null
+          dive_cert_number?: string | null
+          email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          event_id: string
+          ic_passport_number: string
+          id?: string
+          medical_conditions?: string | null
+          participant_name: string
+          phone_number: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dive_cert_level?: string | null
+          dive_cert_number?: string | null
+          email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          event_id?: string
+          ic_passport_number?: string
+          id?: string
+          medical_conditions?: string | null
+          participant_name?: string
+          phone_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dive_trip_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "custom_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipment_assignments: {
         Row: {
           assigned_date: string
@@ -701,6 +757,59 @@ export type Database = {
             columns: ["tank_id"]
             isOneToOne: false
             referencedRelation: "dive_tanks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_rental_requests: {
+        Row: {
+          bcd_needed: boolean | null
+          bcd_size: string | null
+          created_at: string
+          fins_needed: boolean | null
+          fins_size: string | null
+          id: string
+          mask_needed: boolean | null
+          notes: string | null
+          participant_id: string
+          regulator_needed: boolean | null
+          wetsuit_needed: boolean | null
+          wetsuit_size: string | null
+        }
+        Insert: {
+          bcd_needed?: boolean | null
+          bcd_size?: string | null
+          created_at?: string
+          fins_needed?: boolean | null
+          fins_size?: string | null
+          id?: string
+          mask_needed?: boolean | null
+          notes?: string | null
+          participant_id: string
+          regulator_needed?: boolean | null
+          wetsuit_needed?: boolean | null
+          wetsuit_size?: string | null
+        }
+        Update: {
+          bcd_needed?: boolean | null
+          bcd_size?: string | null
+          created_at?: string
+          fins_needed?: boolean | null
+          fins_size?: string | null
+          id?: string
+          mask_needed?: boolean | null
+          notes?: string | null
+          participant_id?: string
+          regulator_needed?: boolean | null
+          wetsuit_needed?: boolean | null
+          wetsuit_size?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_rental_requests_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "dive_trip_participants"
             referencedColumns: ["id"]
           },
         ]
@@ -766,6 +875,84 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "dive_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_inventory_assignments: {
+        Row: {
+          assigned_at: string
+          boat_id: string | null
+          created_at: string
+          equipment_id: string | null
+          event_id: string
+          id: string
+          inventory_type: string
+          notes: string | null
+          participant_id: string | null
+          returned_at: string | null
+          tank_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          boat_id?: string | null
+          created_at?: string
+          equipment_id?: string | null
+          event_id: string
+          id?: string
+          inventory_type: string
+          notes?: string | null
+          participant_id?: string | null
+          returned_at?: string | null
+          tank_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          boat_id?: string | null
+          created_at?: string
+          equipment_id?: string | null
+          event_id?: string
+          id?: string
+          inventory_type?: string
+          notes?: string | null
+          participant_id?: string | null
+          returned_at?: string | null
+          tank_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_inventory_assignments_boat_id_fkey"
+            columns: ["boat_id"]
+            isOneToOne: false
+            referencedRelation: "boats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_inventory_assignments_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "dive_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_inventory_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "custom_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_inventory_assignments_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "dive_trip_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_inventory_assignments_tank_id_fkey"
+            columns: ["tank_id"]
+            isOneToOne: false
+            referencedRelation: "dive_tanks"
             referencedColumns: ["id"]
           },
         ]
@@ -1329,6 +1516,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      waiver_signatures: {
+        Row: {
+          id: string
+          ip_address: string | null
+          participant_id: string
+          signature_data: string
+          signed_at: string
+          waiver_type: string | null
+        }
+        Insert: {
+          id?: string
+          ip_address?: string | null
+          participant_id: string
+          signature_data: string
+          signed_at?: string
+          waiver_type?: string | null
+        }
+        Update: {
+          id?: string
+          ip_address?: string | null
+          participant_id?: string
+          signature_data?: string
+          signed_at?: string
+          waiver_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiver_signatures_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "dive_trip_participants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
