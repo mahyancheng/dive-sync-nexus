@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Link as LinkIcon, Package, Ship, Cylinder } from "lucide-react";
+import { Users, Link as LinkIcon, Package, Ship, Cylinder, Save, Trash2 } from "lucide-react";
 import { InventoryAssignment } from "./InventoryAssignment";
 
 interface Participant {
@@ -17,23 +20,57 @@ interface Participant {
   created_at: string;
 }
 
+interface EventData {
+  id: string;
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  color?: string;
+  dive_type?: string;
+  completed?: boolean;
+}
+
 interface EventDetailDialogProps {
   eventId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUpdate?: (id: string, data: Partial<EventData>) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const EventDetailDialog = ({ eventId, open, onOpenChange }: EventDetailDialogProps) => {
+export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDelete }: EventDetailDialogProps) => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
   const [formLink, setFormLink] = useState("");
+  const [eventData, setEventData] = useState<EventData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (open && eventId) {
+      fetchEventData();
       fetchParticipants();
       generateFormLink();
     }
   }, [open, eventId]);
+
+  const fetchEventData = async () => {
+    if (!eventId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("custom_events")
+        .select("*")
+        .eq("id", eventId)
+        .single();
+
+      if (error) throw error;
+      setEventData(data);
+    } catch (error) {
+      console.error("Error fetching event:", error);
+      toast.error("Failed to load event details");
+    }
+  };
 
   const fetchParticipants = async () => {
     if (!eventId) return;
@@ -74,17 +111,180 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange }: EventDetailDi
     window.open(`https://wa.me/?text=${message}`, "_blank");
   };
 
+  const handleSave = async () => {
+    if (!eventData || !eventId) return;
+    
+    try {
+      const { error } = await supabase
+        .from("custom_events")
+        .update({
+          title: eventData.title,
+          description: eventData.description,
+          start_time: eventData.start_time,
+          end_time: eventData.end_time,
+          color: eventData.color,
+          dive_type: eventData.dive_type,
+          completed: eventData.completed,
+        })
+        .eq("id", eventId);
+
+      if (error) throw error;
+      
+      toast.success("Event updated");
+      onUpdate?.(eventId, eventData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating event:", error);
+      toast.error("Failed to update event");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!eventId) return;
+    
+    if (!confirm("Are you sure you want to delete this event?")) return;
+    
+    try {
+      const { error } = await supabase
+        .from("custom_events")
+        .delete()
+        .eq("id", eventId);
+
+      if (error) throw error;
+      
+      toast.success("Event deleted");
+      onDelete?.(eventId);
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Event Details</DialogTitle>
-          <DialogDescription>
-            View participants, manage inventory assignments, and share registration form
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>{eventData?.title || "Event Details"}</DialogTitle>
+              <DialogDescription>
+                View participants, manage inventory, and edit event details
+              </DialogDescription>
+            </div>
+            <div className="flex gap-2">
+              {!isEditing ? (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={handleDelete}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={handleSave}>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Event Edit Form */}
+          {isEditing && eventData && (
+            <div className="p-4 border rounded-lg space-y-4 bg-muted/20">
+              <h3 className="font-semibold">Edit Event Details</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label>Title</Label>
+                  <Input
+                    value={eventData.title}
+                    onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={eventData.description || ""}
+                    onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <Label>Start Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={eventData.start_time ? new Date(eventData.start_time).toISOString().slice(0, 16) : ""}
+                    onChange={(e) => setEventData({ ...eventData, start_time: new Date(e.target.value).toISOString() })}
+                  />
+                </div>
+
+                <div>
+                  <Label>End Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={eventData.end_time ? new Date(eventData.end_time).toISOString().slice(0, 16) : ""}
+                    onChange={(e) => setEventData({ ...eventData, end_time: new Date(e.target.value).toISOString() })}
+                  />
+                </div>
+
+                <div>
+                  <Label>Color</Label>
+                  <Select value={eventData.color || "blue"} onValueChange={(value) => setEventData({ ...eventData, color: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="blue">Blue</SelectItem>
+                      <SelectItem value="red">Red</SelectItem>
+                      <SelectItem value="green">Green</SelectItem>
+                      <SelectItem value="yellow">Yellow</SelectItem>
+                      <SelectItem value="purple">Purple</SelectItem>
+                      <SelectItem value="orange">Orange</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Dive Type</Label>
+                  <Select value={eventData.dive_type || ""} onValueChange={(value) => setEventData({ ...eventData, dive_type: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Shore Dive">Shore Dive</SelectItem>
+                      <SelectItem value="Boat Dive">Boat Dive</SelectItem>
+                      <SelectItem value="Night Dive">Night Dive</SelectItem>
+                      <SelectItem value="Wreck Dive">Wreck Dive</SelectItem>
+                      <SelectItem value="Deep Dive">Deep Dive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <Button
+                    variant={eventData.completed ? "outline" : "default"}
+                    onClick={() => setEventData({ ...eventData, completed: !eventData.completed })}
+                    className="w-full"
+                  >
+                    {eventData.completed ? "Mark as Incomplete" : "Mark as Complete"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Form Link Section */}
           <div className="p-4 border rounded-lg bg-accent/20 space-y-3">
             <div className="flex items-center justify-between">
