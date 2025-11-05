@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Link as LinkIcon, Package, Ship, Cylinder } from "lucide-react";
@@ -81,89 +81,76 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange }: EventDetailDi
           <DialogTitle>Event Details</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="participants" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="participants">
-              <Users className="w-4 h-4 mr-2" />
-              Participants ({participants.length})
-            </TabsTrigger>
-            <TabsTrigger value="tanks">
-              <Cylinder className="w-4 h-4 mr-2" />
-              Tanks
-            </TabsTrigger>
-            <TabsTrigger value="boats">
-              <Ship className="w-4 h-4 mr-2" />
-              Boats
-            </TabsTrigger>
-            <TabsTrigger value="equipment">
-              <Package className="w-4 h-4 mr-2" />
-              Equipment
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="participants" className="space-y-4">
-            {/* Form Link Section */}
-            <div className="p-4 border rounded-lg bg-accent/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4" />
-                  Registration Form Link
-                </h3>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={copyFormLink}>
-                    Copy Link
-                  </Button>
-                  <Button size="sm" onClick={shareViaWhatsApp}>
-                    Share via WhatsApp
-                  </Button>
-                </div>
+        <div className="space-y-6">
+          {/* Form Link Section */}
+          <div className="p-4 border rounded-lg bg-accent/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold flex items-center gap-2">
+                <LinkIcon className="w-4 h-4" />
+                Registration Form Link
+              </h3>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={copyFormLink}>
+                  Copy Link
+                </Button>
+                <Button size="sm" onClick={shareViaWhatsApp}>
+                  Share via WhatsApp
+                </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Share this link with participants to register for the dive trip. Each participant must fill their own form.
-              </p>
-              <code className="block p-2 bg-muted rounded text-xs break-all">
-                {formLink}
-              </code>
             </div>
+            <p className="text-sm text-muted-foreground">
+              Share this link with participants to register for the dive trip. Each participant must fill their own form.
+            </p>
+            <code className="block p-2 bg-muted rounded text-xs break-all">
+              {formLink}
+            </code>
+          </div>
 
-            {/* Participants List */}
-            <div className="space-y-3">
-              <h3 className="font-semibold">Registered Participants</h3>
-              {loading ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : participants.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No participants registered yet
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {participants.map((participant) => (
-                    <div
-                      key={participant.id}
-                      className="p-3 border rounded-lg hover:bg-accent/10 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{participant.participant_name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {participant.email} • {participant.phone_number}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          {participant.dive_cert_level && (
-                            <Badge variant="secondary">{participant.dive_cert_level}</Badge>
-                          )}
-                          <Badge variant="outline">Registered</Badge>
+          {/* Participants List */}
+          <div className="space-y-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Registered Participants ({participants.length})
+            </h3>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            ) : participants.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No participants registered yet
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {participants.map((participant) => (
+                  <div
+                    key={participant.id}
+                    className="p-3 border rounded-lg hover:bg-accent/10 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{participant.participant_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {participant.email} • {participant.phone_number}
                         </div>
                       </div>
+                      <div className="flex gap-2">
+                        {participant.dive_cert_level && (
+                          <Badge variant="secondary">{participant.dive_cert_level}</Badge>
+                        )}
+                        <Badge variant="outline">Registered</Badge>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-          <TabsContent value="tanks">
+          {/* Tanks Assignment */}
+          <div className="space-y-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Cylinder className="w-4 h-4" />
+              Tank Assignments
+            </h3>
             {eventId && (
               <InventoryAssignment
                 eventId={eventId}
@@ -171,9 +158,14 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange }: EventDetailDi
                 participants={participants}
               />
             )}
-          </TabsContent>
+          </div>
 
-          <TabsContent value="boats">
+          {/* Boats Assignment */}
+          <div className="space-y-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Ship className="w-4 h-4" />
+              Boat Assignments
+            </h3>
             {eventId && (
               <InventoryAssignment
                 eventId={eventId}
@@ -181,9 +173,14 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange }: EventDetailDi
                 participants={participants}
               />
             )}
-          </TabsContent>
+          </div>
 
-          <TabsContent value="equipment">
+          {/* Equipment Assignment */}
+          <div className="space-y-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Equipment Assignments
+            </h3>
             {eventId && (
               <InventoryAssignment
                 eventId={eventId}
@@ -191,8 +188,8 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange }: EventDetailDi
                 participants={participants}
               />
             )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
