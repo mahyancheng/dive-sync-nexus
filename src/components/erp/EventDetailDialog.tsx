@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -79,6 +79,9 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange }: EventDetailDi
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Event Details</DialogTitle>
+          <DialogDescription>
+            View participants, manage inventory assignments, and share registration form
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
