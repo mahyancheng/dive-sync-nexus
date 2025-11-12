@@ -58,8 +58,9 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     if (!eventId) return;
     
     try {
-      // Determine event type from the ID prefix
-      const [prefix, dbId] = eventId.split('-');
+      // Determine event type from the ID prefix safely
+      const prefix = eventId.startsWith('custom-') ? 'custom' : eventId.startsWith('booking-') ? 'booking' : eventId.startsWith('maintenance-') ? 'maintenance' : 'unknown';
+      const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
       
       if (prefix === 'custom') {
         const { data, error } = await supabase
@@ -97,7 +98,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     setLoading(true);
     try {
       // Use the actual database ID (without prefix)
-      const [prefix, dbId] = eventId.split('-');
+      const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
       
       const { data, error } = await supabase
         .from("dive_trip_participants")
@@ -118,7 +119,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
   const generateFormLink = () => {
     if (!eventId) return;
     // Use the actual database ID (without prefix)
-    const [prefix, dbId] = eventId.split('-');
+    const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
     const link = `${window.location.origin}/dive-trip-form/${dbId}`;
     setFormLink(link);
   };
@@ -140,9 +141,9 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     
     try {
       // Use the actual database ID (without prefix)
-      const [prefix, dbId] = eventId.split('-');
+      const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
       
-      if (prefix !== 'custom') {
+      if (!eventId.startsWith('custom-')) {
         toast.error("Can only edit custom events");
         return;
       }
@@ -178,9 +179,9 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     
     try {
       // Use the actual database ID (without prefix)
-      const [prefix, dbId] = eventId.split('-');
+      const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
       
-      if (prefix !== 'custom') {
+      if (!eventId.startsWith('custom-')) {
         toast.error("Can only delete custom events");
         return;
       }
@@ -404,7 +405,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             </h3>
             {eventId && (
               <InventoryAssignment
-                eventId={eventId.split('-')[1]}
+                eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
                 inventoryType="tank"
                 participants={participants}
               />
@@ -419,7 +420,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             </h3>
             {eventId && (
               <InventoryAssignment
-                eventId={eventId.split('-')[1]}
+                eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
                 inventoryType="boat"
                 participants={participants}
               />
@@ -434,7 +435,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             </h3>
             {eventId && (
               <InventoryAssignment
-                eventId={eventId.split('-')[1]}
+                eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
                 inventoryType="equipment"
                 participants={participants}
               />
