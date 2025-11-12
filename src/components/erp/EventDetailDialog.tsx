@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Link as LinkIcon, Package, Ship, Cylinder, Save, Trash2 } from "lucide-react";
 import { InventoryAssignment } from "./InventoryAssignment";
-
+import type { Event as EventManagerEvent } from "@/components/ui/event-manager";
 interface Participant {
   id: string;
   participant_name: string;
@@ -35,7 +35,7 @@ interface EventDetailDialogProps {
   eventId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate?: (id: string, data: Partial<EventData>) => void;
+  onUpdate?: (id: string, data: Partial<EventManagerEvent>) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -76,14 +76,23 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           toast.error("Event not found");
         }
       } else if (prefix === 'booking') {
-        // For bookings, we can still show participant and inventory management
-        // but can't edit the booking details themselves
+        const { data, error } = await supabase
+          .from("dive_bookings")
+          .select("dive_date, end_date, group_name, dive_type, location, status")
+          .eq("id", dbId)
+          .maybeSingle();
+        if (error) throw error;
+        const start = data?.dive_date ? new Date(data.dive_date).toISOString() : new Date().toISOString();
+        const end = data?.end_date
+          ? new Date(data.end_date).toISOString()
+          : new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000).toISOString();
         setEventData({
           id: dbId,
-          title: "Booking Event",
-          description: "Booking event - view participants and inventory",
-          start_time: new Date().toISOString(),
-          end_time: new Date().toISOString(),
+          title: data?.group_name || "Booking",
+          description: data?.location ? `Location: ${data.location}` : undefined,
+          start_time: start,
+          end_time: end,
+          dive_type: data?.dive_type || undefined,
         } as EventData);
       }
     } catch (error) {
@@ -138,33 +147,20 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
 
   const handleSave = async () => {
     if (!eventData || !eventId) return;
-    
     try {
-      // Use the actual database ID (without prefix)
-      const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
-      
-      if (!eventId.startsWith('custom-')) {
-        toast.error("Can only edit custom events");
-        return;
-      }
-      
-      const { error } = await supabase
-        .from("custom_events")
-        .update({
-          title: eventData.title,
-          description: eventData.description,
-          start_time: eventData.start_time,
-          end_time: eventData.end_time,
-          color: eventData.color,
-          dive_type: eventData.dive_type,
-          completed: eventData.completed,
-        })
-        .eq("id", dbId);
+      const isCustom = eventId.startsWith('custom-');
+      const payload: Partial<EventManagerEvent> = {
+        title: isCustom ? eventData.title : undefined,
+        description: isCustom ? eventData.description : undefined,
+        startTime: eventData.start_time ? new Date(eventData.start_time) : undefined,
+        endTime: eventData.end_time ? new Date(eventData.end_time) : undefined,
+        color: isCustom ? (eventData.color as any) : undefined,
+        completed: isCustom ? eventData.completed : undefined,
+        diveType: isCustom ? eventData.dive_type : undefined,
+      };
 
-      if (error) throw error;
-      
+      onUpdate?.(eventId, payload);
       toast.success("Event updated");
-      onUpdate?.(eventId, eventData);
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating event:", error);
@@ -174,26 +170,13 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
 
   const handleDelete = async () => {
     if (!eventId) return;
-    
     if (!confirm("Are you sure you want to delete this event?")) return;
-    
+
     try {
-      // Use the actual database ID (without prefix)
-      const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
-      
       if (!eventId.startsWith('custom-')) {
         toast.error("Can only delete custom events");
         return;
       }
-      
-      const { error } = await supabase
-        .from("custom_events")
-        .delete()
-        .eq("id", dbId);
-
-      if (error) throw error;
-      
-      toast.success("Event deleted");
       onDelete?.(eventId);
       onOpenChange(false);
     } catch (error) {
@@ -281,22 +264,24 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                     />
                   </div>
 
-                  <div>
-                    <Label>Color</Label>
-                    <Select value={eventData.color || "blue"} onValueChange={(value) => setEventData({ ...eventData, color: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="blue">Blue</SelectItem>
-                        <SelectItem value="red">Red</SelectItem>
-                        <SelectItem value="green">Green</SelectItem>
-                        <SelectItem value="yellow">Yellow</SelectItem>
-                        <SelectItem value="purple">Purple</SelectItem>
-                        <SelectItem value="orange">Orange</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {eventId?.startsWith('custom-') && (
+                    <div>
+                      <Label>Color</Label>
+                      <Select value={eventData.color || "blue"} onValueChange={(value) => setEventData({ ...eventData, color: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="blue">Blue</SelectItem>
+                          <SelectItem value="red">Red</SelectItem>
+                          <SelectItem value="green">Green</SelectItem>
+                          <SelectItem value="yellow">Yellow</SelectItem>
+                          <SelectItem value="purple">Purple</SelectItem>
+                          <SelectItem value="orange">Orange</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div>
                     <Label>Dive Type</Label>
@@ -397,50 +382,53 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             )}
           </div>
 
-          {/* Tanks Assignment */}
-          <div className="space-y-3">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Cylinder className="w-4 h-4" />
-              Tank Assignments
-            </h3>
-            {eventId && (
-              <InventoryAssignment
-                eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
-                inventoryType="tank"
-                participants={participants}
-              />
-            )}
-          </div>
+          {/* Inventory Assignments */}
+          {eventId?.startsWith('custom-') ? (
+            <>
+              {/* Tanks Assignment */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Cylinder className="w-4 h-4" />
+                  Tank Assignments
+                </h3>
+                <InventoryAssignment
+                  eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
+                  inventoryType="tank"
+                  participants={participants}
+                />
+              </div>
 
-          {/* Boats Assignment */}
-          <div className="space-y-3">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Ship className="w-4 h-4" />
-              Boat Assignments
-            </h3>
-            {eventId && (
-              <InventoryAssignment
-                eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
-                inventoryType="boat"
-                participants={participants}
-              />
-            )}
-          </div>
+              {/* Boats Assignment */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Ship className="w-4 h-4" />
+                  Boat Assignments
+                </h3>
+                <InventoryAssignment
+                  eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
+                  inventoryType="boat"
+                  participants={participants}
+                />
+              </div>
 
-          {/* Equipment Assignment */}
-          <div className="space-y-3">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Equipment Assignments
-            </h3>
-            {eventId && (
-              <InventoryAssignment
-                eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
-                inventoryType="equipment"
-                participants={participants}
-              />
-            )}
-          </div>
+              {/* Equipment Assignment */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Equipment Assignments
+                </h3>
+                <InventoryAssignment
+                  eventId={eventId.replace(/^(custom|booking|maintenance)-/, '')}
+                  inventoryType="equipment"
+                  participants={participants}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="p-4 border rounded-lg bg-muted/10 text-sm text-muted-foreground">
+              Inventory assignments are only available for custom events.
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

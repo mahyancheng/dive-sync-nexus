@@ -251,8 +251,9 @@ const ERPSchedule = () => {
   };
 
   const handleEventUpdate = async (id: string, event: Partial<EventManagerEvent>) => {
-    // Extract the actual database ID from the prefixed ID
-    const [prefix, dbId] = id.split("-");
+    // Extract the actual database ID from the prefixed ID safely
+    const prefix = id.startsWith("custom-") ? "custom" : id.startsWith("booking-") ? "booking" : id.startsWith("maintenance-") ? "maintenance" : "unknown";
+    const dbId = id.replace(/^(custom|booking|maintenance)-/, '');
     
     if (prefix === "booking") {
       // Update booking
@@ -419,6 +420,8 @@ const ERPSchedule = () => {
           eventId={selectedEventId}
           open={detailDialogOpen}
           onOpenChange={setDetailDialogOpen}
+          onUpdate={(id, data) => handleEventUpdate(id, data)}
+          onDelete={(id) => handleEventDelete(id)}
         />
       </main>
     </div>
