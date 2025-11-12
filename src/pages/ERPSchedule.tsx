@@ -403,8 +403,13 @@ const ERPSchedule = () => {
             onEventUpdate={handleEventUpdate}
             onEventDelete={handleEventDelete}
             onEventClick={(eventId) => {
-              setSelectedEventId(eventId.replace(/^(booking|maintenance|custom)-/, ''));
-              setDetailDialogOpen(true);
+              // Only open detail dialog for custom events and bookings
+              if (eventId.startsWith('custom-') || eventId.startsWith('booking-')) {
+                setSelectedEventId(eventId);
+                setDetailDialogOpen(true);
+              } else {
+                toast.info("Maintenance events don't have detailed management");
+              }
             }}
             defaultView="month"
           />

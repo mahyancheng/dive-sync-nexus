@@ -58,14 +58,33 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     if (!eventId) return;
     
     try {
-      const { data, error } = await supabase
-        .from("custom_events")
-        .select("*")
-        .eq("id", eventId)
-        .single();
+      // Determine event type from the ID prefix
+      const [prefix, dbId] = eventId.split('-');
+      
+      if (prefix === 'custom') {
+        const { data, error } = await supabase
+          .from("custom_events")
+          .select("*")
+          .eq("id", dbId)
+          .maybeSingle();
 
-      if (error) throw error;
-      setEventData(data);
+        if (error) throw error;
+        if (data) {
+          setEventData(data);
+        } else {
+          toast.error("Event not found");
+        }
+      } else if (prefix === 'booking') {
+        // For bookings, we can still show participant and inventory management
+        // but can't edit the booking details themselves
+        setEventData({
+          id: dbId,
+          title: "Booking Event",
+          description: "Booking event - view participants and inventory",
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(),
+        } as EventData);
+      }
     } catch (error) {
       console.error("Error fetching event:", error);
       toast.error("Failed to load event details");
@@ -77,10 +96,13 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     
     setLoading(true);
     try {
+      // Use the actual database ID (without prefix)
+      const [prefix, dbId] = eventId.split('-');
+      
       const { data, error } = await supabase
         .from("dive_trip_participants")
         .select("*")
-        .eq("event_id", eventId)
+        .eq("event_id", dbId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -95,7 +117,9 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
 
   const generateFormLink = () => {
     if (!eventId) return;
-    const link = `${window.location.origin}/dive-trip-form/${eventId}`;
+    // Use the actual database ID (without prefix)
+    const [prefix, dbId] = eventId.split('-');
+    const link = `${window.location.origin}/dive-trip-form/${dbId}`;
     setFormLink(link);
   };
 
@@ -115,6 +139,14 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     if (!eventData || !eventId) return;
     
     try {
+      // Use the actual database ID (without prefix)
+      const [prefix, dbId] = eventId.split('-');
+      
+      if (prefix !== 'custom') {
+        toast.error("Can only edit custom events");
+        return;
+      }
+      
       const { error } = await supabase
         .from("custom_events")
         .update({
@@ -126,7 +158,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           dive_type: eventData.dive_type,
           completed: eventData.completed,
         })
-        .eq("id", eventId);
+        .eq("id", dbId);
 
       if (error) throw error;
       
@@ -145,10 +177,18 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     if (!confirm("Are you sure you want to delete this event?")) return;
     
     try {
+      // Use the actual database ID (without prefix)
+      const [prefix, dbId] = eventId.split('-');
+      
+      if (prefix !== 'custom') {
+        toast.error("Can only delete custom events");
+        return;
+      }
+      
       const { error } = await supabase
         .from("custom_events")
         .delete()
-        .eq("id", eventId);
+        .eq("id", dbId);
 
       if (error) throw error;
       
@@ -177,28 +217,30 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             <div className="p-4 border rounded-lg space-y-4 bg-muted/10">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Event Information</h3>
-                <div className="flex gap-2">
-                  {!isEditing ? (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={handleDelete}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
-                        Cancel
-                      </Button>
-                      <Button size="sm" onClick={handleSave}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save
-                      </Button>
-                    </>
-                  )}
-                </div>
+                {eventId?.startsWith('custom-') && (
+                  <div className="flex gap-2">
+                    {!isEditing ? (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={handleDelete}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleSave}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Save
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               
               {isEditing ? (
@@ -362,7 +404,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             </h3>
             {eventId && (
               <InventoryAssignment
-                eventId={eventId}
+                eventId={eventId.split('-')[1]}
                 inventoryType="tank"
                 participants={participants}
               />
@@ -377,7 +419,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             </h3>
             {eventId && (
               <InventoryAssignment
-                eventId={eventId}
+                eventId={eventId.split('-')[1]}
                 inventoryType="boat"
                 participants={participants}
               />
@@ -392,7 +434,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             </h3>
             {eventId && (
               <InventoryAssignment
-                eventId={eventId}
+                eventId={eventId.split('-')[1]}
                 inventoryType="equipment"
                 participants={participants}
               />
