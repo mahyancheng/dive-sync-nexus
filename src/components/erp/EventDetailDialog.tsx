@@ -9,25 +9,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Link as LinkIcon, Package, Ship, Cylinder, Save, Trash2, Calendar, Edit, MapPin } from "lucide-react";
+import { Users, Link as LinkIcon, Package, Ship, Cylinder, Save, Trash2, Calendar, Edit, MapPin, ChevronRight } from "lucide-react";
 import { InventoryAssignment } from "./InventoryAssignment";
+import { ParticipantDetailDialog } from "./ParticipantDetailDialog";
 import type { Event as EventManagerEvent } from "@/components/ui/event-manager";
-
-interface Participant {
-  id: string;
-  participant_name: string;
-  email: string;
-  phone_number: string;
-  dive_cert_level?: string;
-  created_at: string;
-  equipment_requests?: EquipmentRequest[];
-}
 
 interface EquipmentRequest {
   id: string;
   equipment_type: string | null;
   size: string | null;
   notes: string | null;
+}
+
+interface Participant {
+  id: string;
+  participant_name: string;
+  email: string;
+  phone_number: string;
+  ic_passport_number?: string;
+  dive_cert_number?: string;
+  dive_cert_level?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  medical_conditions?: string;
+  created_at: string;
+  equipment_requests?: EquipmentRequest[];
 }
 
 interface BookingData {
@@ -66,6 +72,8 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
   const [loading, setLoading] = useState(false);
   const [formLink, setFormLink] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  const [participantDialogOpen, setParticipantDialogOpen] = useState(false);
   
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [customEventData, setCustomEventData] = useState<CustomEventData | null>(null);
@@ -569,7 +577,14 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
               ) : (
               <div className="space-y-3">
                   {participants.map((participant) => (
-                    <div key={participant.id} className="p-4 border rounded-lg hover:bg-accent/5 transition-colors">
+                    <div 
+                      key={participant.id} 
+                      className="p-4 border rounded-lg hover:bg-accent/10 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedParticipant(participant);
+                        setParticipantDialogOpen(true);
+                      }}
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <div className="font-medium">{participant.participant_name}</div>
@@ -577,10 +592,11 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                             {participant.email} • {participant.phone_number}
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
                           {participant.dive_cert_level && (
                             <Badge variant="secondary">{participant.dive_cert_level}</Badge>
                           )}
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
                         </div>
                       </div>
                       
@@ -595,11 +611,6 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                               </Badge>
                             ))}
                           </div>
-                          {participant.equipment_requests.some(eq => eq.notes) && (
-                            <div className="text-xs text-muted-foreground mt-2">
-                              Notes: {participant.equipment_requests.find(eq => eq.notes)?.notes}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -655,6 +666,12 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             )}
           </TabsContent>
         </Tabs>
+
+        <ParticipantDetailDialog
+          participant={selectedParticipant}
+          open={participantDialogOpen}
+          onOpenChange={setParticipantDialogOpen}
+        />
       </DialogContent>
     </Dialog>
   );
