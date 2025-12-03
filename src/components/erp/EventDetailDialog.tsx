@@ -75,9 +75,15 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
   const [isEditing, setIsEditing] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [participantDialogOpen, setParticipantDialogOpen] = useState(false);
+  const [assignmentVersion, setAssignmentVersion] = useState(0);
+  const [divesPerPerson, setDivesPerPerson] = useState(2);
   
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [customEventData, setCustomEventData] = useState<CustomEventData | null>(null);
+
+  const handleAssignmentChange = () => {
+    setAssignmentVersion(v => v + 1);
+  };
   const [relatedBookings, setRelatedBookings] = useState<BookingData[]>([]);
 
   const getEventType = () => {
@@ -624,6 +630,27 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           <TabsContent value="equipment" className="space-y-6">
             {dbId ? (
               <>
+                {/* Dive Settings */}
+                <div className="flex items-center gap-4 p-3 border rounded-lg bg-muted/10">
+                  <Label className="text-sm font-medium">Tanks per person:</Label>
+                  <Select 
+                    value={divesPerPerson.toString()} 
+                    onValueChange={(v) => setDivesPerPerson(parseInt(v))}
+                  >
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">
+                    ({participants.length} participants × {divesPerPerson} = {participants.length * divesPerPerson} tanks needed)
+                  </span>
+                </div>
+
                 {/* Equipment Requests vs Assignments Tracker */}
                 <div className="space-y-3 p-4 border rounded-lg bg-muted/10">
                   <h3 className="font-semibold flex items-center gap-2">
@@ -631,6 +658,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                     Equipment Requests Status
                   </h3>
                   <EquipmentRequestsTracker 
+                    key={assignmentVersion}
                     eventId={dbId} 
                     participants={participants}
                   />
@@ -645,6 +673,8 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                     eventId={dbId}
                     inventoryType="tank"
                     participants={participants}
+                    tanksPerPerson={divesPerPerson}
+                    onAssignmentChange={handleAssignmentChange}
                   />
                 </div>
 
@@ -657,6 +687,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                     eventId={dbId}
                     inventoryType="boat"
                     participants={participants}
+                    onAssignmentChange={handleAssignmentChange}
                   />
                 </div>
 
@@ -669,6 +700,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                     eventId={dbId}
                     inventoryType="equipment"
                     participants={participants}
+                    onAssignmentChange={handleAssignmentChange}
                   />
                 </div>
               </>
