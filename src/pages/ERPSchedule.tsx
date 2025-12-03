@@ -255,20 +255,38 @@ const ERPSchedule = () => {
     const dbId = id.replace(/^(custom|booking|maintenance)-/, '');
     
     if (prefix === "booking") {
-      // Update booking
+      // Get booking data to check if it's part of a trip group
+      const { data: bookingData } = await supabase
+        .from("dive_bookings")
+        .select("group_name")
+        .eq("id", dbId)
+        .single();
+
+      const updateData: any = {};
+      if (event.startTime) updateData.dive_date = event.startTime.toISOString();
+      if (event.color !== undefined) updateData.color = event.color;
+
+      // Update the booking
       const { error } = await supabase
         .from("dive_bookings")
-        .update({
-          dive_date: event.startTime?.toISOString().split("T")[0],
-        })
+        .update(updateData)
         .eq("id", dbId);
 
       if (error) {
         toast.error("Failed to update event");
-      } else {
-        toast.success("Event updated");
-        fetchEvents();
+        return;
       }
+
+      // If color changed and this is part of a trip group, sync color across all days
+      if (event.color !== undefined && bookingData?.group_name) {
+        await supabase
+          .from("dive_bookings")
+          .update({ color: event.color })
+          .eq("group_name", bookingData.group_name);
+      }
+
+      toast.success("Event updated");
+      fetchEvents();
     } else if (prefix === "custom") {
       // Check if this is part of a group
       const { data: eventData } = await supabase
