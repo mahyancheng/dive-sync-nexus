@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ChevronLeft, ChevronRight, Plus, Calendar, Clock, Grid3x3, List } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Calendar, Clock, Grid3x3, List, GripVertical } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface Event {
@@ -22,6 +22,7 @@ export interface Event {
   completed?: boolean
   diveType?: string
   eventGroupId?: string
+  displayOrder?: number
 }
 
 export interface EventManagerProps {
@@ -30,6 +31,7 @@ export interface EventManagerProps {
   onEventUpdate?: (id: string, event: Partial<Event>) => void
   onEventDelete?: (id: string) => void
   onEventClick?: (eventId: string) => void
+  onEventReorder?: (eventId: string, newOrder: number) => void
   categories?: string[]
   colors?: { name: string; value: string; bg: string; text: string }[]
   defaultView?: "month" | "week" | "day" | "list"
@@ -45,6 +47,7 @@ export function EventManager({
   onEventUpdate,
   onEventDelete,
   onEventClick,
+  onEventReorder,
   defaultView = "month",
   className,
 }: EventManagerProps) {
@@ -56,7 +59,18 @@ export function EventManager({
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [newEvent, setNewEvent] = useState<Partial<Event>>({ title: "", startTime: undefined, endTime: undefined, color: "blue", completed: false })
 
-  const filteredEvents = useMemo(() => events.slice().sort((a,b)=>a.startTime.getTime()-b.startTime.getTime()), [events])
+  // Sync with external events prop
+  useEffect(() => {
+    setEvents(initialEvents)
+  }, [initialEvents])
+
+  const filteredEvents = useMemo(() => events.slice().sort((a,b)=> {
+    // First sort by display order, then by start time
+    const orderA = a.displayOrder ?? 0;
+    const orderB = b.displayOrder ?? 0;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.startTime.getTime()-b.startTime.getTime();
+  }), [events])
 
   const navigateDate = (dir: "prev" | "next") => {
     setCurrentDate((d) => {
@@ -118,7 +132,7 @@ export function EventManager({
       </div>
 
       {/* Views */}
-      {view==="month" && <MonthView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} />}
+      {view==="month" && <MonthView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} onEventReorder={onEventReorder} />}
       {view==="week" && <WeekView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} />}
       {view==="day" && <DayView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} />}
       {view==="list" && <ListView events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} />}
@@ -131,16 +145,39 @@ function sameDay(a: Date, b: Date){ return a.getFullYear()===b.getFullYear() && 
 function fmtTime(d: Date){ return d.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"}) }
 
 /* Month */
-function MonthView({ currentDate, events, onEventClick }: { currentDate: Date; events: Event[]; onEventClick: (e: Event)=>void }) {
+function MonthView({ currentDate, events, onEventClick, onEventReorder }: { currentDate: Date; events: Event[]; onEventClick: (e: Event)=>void; onEventReorder?: (eventId: string, newOrder: number) => void }) {
+  const [draggedEvent, setDraggedEvent] = useState<Event | null>(null)
+  
   const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
   const start = new Date(first); start.setDate(start.getDate() - start.getDay())
   const days = Array.from({ length: 42 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate()+i))
+
+  const handleDragStart = (e: React.DragEvent, event: Event) => {
+    setDraggedEvent(event)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetEvent: Event, dayEvents: Event[]) => {
+    e.preventDefault()
+    if (!draggedEvent || !onEventReorder) return
+    if (!sameDay(draggedEvent.startTime, targetEvent.startTime)) return // Only reorder within same day
+    
+    const targetIndex = dayEvents.findIndex(ev => ev.id === targetEvent.id)
+    onEventReorder(draggedEvent.id, targetIndex)
+    setDraggedEvent(null)
+  }
+
   return (
     <Card className="overflow-hidden">
       <div className="grid grid-cols-7 border-b">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d)=> <div key={d} className="p-2 text-center text-xs font-medium border-r last:border-r-0">{d}</div>)}</div>
       <div className="grid grid-cols-7">
         {days.map((d,i)=>{
-          const dayEvents = events.filter((e)=> sameDay(e.startTime, d))
+          const dayEvents = events.filter((e)=> sameDay(e.startTime, d)).sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
           const isToday = sameDay(d, new Date())
           const inMonth = d.getMonth()===currentDate.getMonth()
           return (
@@ -148,24 +185,32 @@ function MonthView({ currentDate, events, onEventClick }: { currentDate: Date; e
               <div className={cn("mb-1 h-6 w-6 flex items-center justify-center rounded-full text-xs", isToday && "bg-primary text-primary-foreground font-semibold")}>{d.getDate()}</div>
               <div className="space-y-1">
                 {dayEvents.slice(0,3).map((e)=> (
-                  <button 
-                    key={e.id} 
-                    onClick={()=>onEventClick(e)} 
+                  <div
+                    key={e.id}
+                    draggable={!!onEventReorder}
+                    onDragStart={(ev) => handleDragStart(ev, e)}
+                    onDragOver={handleDragOver}
+                    onDrop={(ev) => handleDrop(ev, e, dayEvents)}
                     className={cn(
-                      "w-full truncate rounded px-2 py-1 text-left text-[11px] relative",
+                      "w-full truncate rounded px-2 py-1 text-left text-[11px] relative cursor-pointer flex items-center gap-1",
                       e.color === "red" && "bg-red-500 text-white",
                       e.color === "blue" && "bg-blue-500 text-white",
                       e.color === "green" && "bg-green-500 text-white",
                       e.color === "yellow" && "bg-yellow-500 text-black",
                       e.color === "purple" && "bg-purple-500 text-white",
                       e.color === "orange" && "bg-orange-500 text-white",
-                      e.completed && "opacity-50 line-through"
+                      e.completed && "opacity-50 line-through",
+                      draggedEvent?.id === e.id && "opacity-50"
                     )}
+                    onClick={()=>onEventClick(e)}
                   >
-                    {e.completed && "✓ "}
-                    {e.title}
-                    {e.eventGroupId && <span className="ml-1 text-[9px]">📅</span>}
-                  </button>
+                    {onEventReorder && <GripVertical className="w-3 h-3 flex-shrink-0 cursor-grab" />}
+                    <span className="truncate">
+                      {e.completed && "✓ "}
+                      {e.title}
+                      {e.eventGroupId && <span className="ml-1 text-[9px]">📅</span>}
+                    </span>
+                  </div>
                 ))}
                 {dayEvents.length>3 && <div className="text-[10px] text-muted-foreground">+{dayEvents.length-3} more</div>}
               </div>

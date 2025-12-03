@@ -153,6 +153,7 @@ export type Database = {
           completed: boolean | null
           created_at: string
           description: string | null
+          display_order: number | null
           dive_center_id: string
           dive_type: string | null
           end_time: string
@@ -168,6 +169,7 @@ export type Database = {
           completed?: boolean | null
           created_at?: string
           description?: string | null
+          display_order?: number | null
           dive_center_id: string
           dive_type?: string | null
           end_time: string
@@ -183,6 +185,7 @@ export type Database = {
           completed?: boolean | null
           created_at?: string
           description?: string | null
+          display_order?: number | null
           dive_center_id?: string
           dive_type?: string | null
           end_time?: string
@@ -261,6 +264,7 @@ export type Database = {
           created_at: string
           customer_id: string
           deposit_amount: number | null
+          display_order: number | null
           dive_center_id: string
           dive_date: string
           dive_type: string | null
@@ -284,6 +288,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           deposit_amount?: number | null
+          display_order?: number | null
           dive_center_id: string
           dive_date: string
           dive_type?: string | null
@@ -307,6 +312,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           deposit_amount?: number | null
+          display_order?: number | null
           dive_center_id?: string
           dive_date?: string
           dive_type?: string | null

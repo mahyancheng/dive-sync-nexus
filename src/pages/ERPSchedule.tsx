@@ -125,6 +125,7 @@ const ERPSchedule = () => {
           endTime,
           color: booking.color || "blue",
           category: "booking",
+          displayOrder: booking.display_order || 0,
         });
       });
     }
@@ -144,6 +145,7 @@ const ERPSchedule = () => {
             endTime,
             color: "yellow",
             category: "maintenance",
+            displayOrder: 999, // Maintenance always at bottom
           });
         }
       });
@@ -163,12 +165,43 @@ const ERPSchedule = () => {
           completed: event.completed || false,
           diveType: event.dive_type || undefined,
           eventGroupId: event.event_group_id || undefined,
+          displayOrder: event.display_order || 0,
         });
       });
     }
 
     setEvents(allEvents);
     setLoading(false);
+  };
+
+  const handleEventReorder = async (eventId: string, newOrder: number) => {
+    const prefix = eventId.startsWith("custom-") ? "custom" : eventId.startsWith("booking-") ? "booking" : "unknown";
+    const dbId = eventId.replace(/^(custom|booking|maintenance)-/, '');
+    
+    if (prefix === "booking") {
+      const { error } = await supabase
+        .from("dive_bookings")
+        .update({ display_order: newOrder })
+        .eq("id", dbId);
+      
+      if (!error) {
+        // Update local state immediately
+        setEvents(prev => prev.map(e => 
+          e.id === eventId ? { ...e, displayOrder: newOrder } : e
+        ));
+      }
+    } else if (prefix === "custom") {
+      const { error } = await supabase
+        .from("custom_events")
+        .update({ display_order: newOrder })
+        .eq("id", dbId);
+      
+      if (!error) {
+        setEvents(prev => prev.map(e => 
+          e.id === eventId ? { ...e, displayOrder: newOrder } : e
+        ));
+      }
+    }
   };
 
   const handleEventCreate = async (event: Omit<EventManagerEvent, "id">) => {
@@ -420,6 +453,7 @@ const ERPSchedule = () => {
             onEventCreate={handleEventCreate}
             onEventUpdate={handleEventUpdate}
             onEventDelete={handleEventDelete}
+            onEventReorder={handleEventReorder}
             onEventClick={(eventId) => {
               // Only open detail dialog for custom events and bookings
               if (eventId.startsWith('custom-') || eventId.startsWith('booking-')) {
@@ -439,6 +473,7 @@ const ERPSchedule = () => {
           onOpenChange={setDetailDialogOpen}
           onUpdate={(id, data) => handleEventUpdate(id, data)}
           onDelete={(id) => handleEventDelete(id)}
+          onRefresh={fetchEvents}
         />
       </main>
     </div>
