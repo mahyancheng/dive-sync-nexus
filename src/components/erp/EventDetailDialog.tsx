@@ -20,6 +20,14 @@ interface Participant {
   phone_number: string;
   dive_cert_level?: string;
   created_at: string;
+  equipment_requests?: EquipmentRequest[];
+}
+
+interface EquipmentRequest {
+  id: string;
+  equipment_type: string | null;
+  size: string | null;
+  notes: string | null;
 }
 
 interface BookingData {
@@ -139,18 +147,31 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     
     setLoading(true);
     try {
-      if (eventType === 'custom') {
-        const { data, error } = await supabase
-          .from("dive_trip_participants")
-          .select("*")
-          .eq("event_id", dbId)
-          .order("created_at", { ascending: false });
+      // Fetch participants for both custom events and bookings
+      const { data, error } = await supabase
+        .from("dive_trip_participants")
+        .select("*")
+        .eq("event_id", dbId)
+        .order("created_at", { ascending: false });
 
-        if (error) throw error;
-        setParticipants(data || []);
-      } else {
-        setParticipants([]);
-      }
+      if (error) throw error;
+      
+      // Fetch equipment requests for each participant
+      const participantsWithEquipment = await Promise.all(
+        (data || []).map(async (participant) => {
+          const { data: equipment } = await supabase
+            .from("equipment_rental_requests")
+            .select("id, equipment_type, size, notes")
+            .eq("participant_id", participant.id);
+          
+          return {
+            ...participant,
+            equipment_requests: equipment || []
+          };
+        })
+      );
+      
+      setParticipants(participantsWithEquipment);
     } catch (error) {
       console.error("Error fetching participants:", error);
     } finally {
@@ -508,27 +529,29 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           </TabsContent>
 
           <TabsContent value="participants" className="space-y-4">
-            {eventType === 'custom' && (
-              <div className="p-4 border rounded-lg bg-accent/10 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4" />
-                    Registration Form Link
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={copyFormLink}>
-                      Copy Link
-                    </Button>
-                    <Button size="sm" onClick={shareViaWhatsApp}>
-                      Share via WhatsApp
-                    </Button>
-                  </div>
+            {/* Form Link - Available for both custom events and bookings */}
+            <div className="p-4 border rounded-lg bg-accent/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4" />
+                  Registration Form Link
+                </h3>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={copyFormLink}>
+                    Copy Link
+                  </Button>
+                  <Button size="sm" onClick={shareViaWhatsApp}>
+                    Share via WhatsApp
+                  </Button>
                 </div>
-                <code className="block p-2 bg-muted rounded text-xs break-all">
-                  {formLink}
-                </code>
               </div>
-            )}
+              <p className="text-sm text-muted-foreground">
+                Share this link with participants to register for the dive trip and request equipment.
+              </p>
+              <code className="block p-2 bg-muted rounded text-xs break-all">
+                {formLink}
+              </code>
+            </div>
 
             <div className="space-y-3">
               <h3 className="font-semibold flex items-center gap-2">
@@ -539,15 +562,15 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
               {loading ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
               ) : participants.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+              <div className="text-center py-8 text-muted-foreground border rounded-lg">
                   No participants registered yet
-                  {eventType === 'custom' && <p className="text-xs mt-2">Share the registration link to collect participants</p>}
+                  <p className="text-xs mt-2">Share the registration link above to collect participants</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+              <div className="space-y-3">
                   {participants.map((participant) => (
-                    <div key={participant.id} className="p-3 border rounded-lg hover:bg-accent/5 transition-colors">
-                      <div className="flex items-center justify-between">
+                    <div key={participant.id} className="p-4 border rounded-lg hover:bg-accent/5 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
                         <div>
                           <div className="font-medium">{participant.participant_name}</div>
                           <div className="text-sm text-muted-foreground">
@@ -560,6 +583,25 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                           )}
                         </div>
                       </div>
+                      
+                      {/* Equipment Requests */}
+                      {participant.equipment_requests && participant.equipment_requests.length > 0 && (
+                        <div className="mt-3 pt-3 border-t">
+                          <div className="text-xs font-medium text-muted-foreground mb-2">Equipment Requested:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {participant.equipment_requests.map((eq) => (
+                              <Badge key={eq.id} variant="outline" className="text-xs">
+                                {eq.equipment_type}{eq.size ? ` (${eq.size})` : ''}
+                              </Badge>
+                            ))}
+                          </div>
+                          {participant.equipment_requests.some(eq => eq.notes) && (
+                            <div className="text-xs text-muted-foreground mt-2">
+                              Notes: {participant.equipment_requests.find(eq => eq.notes)?.notes}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
