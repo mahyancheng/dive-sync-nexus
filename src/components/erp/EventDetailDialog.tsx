@@ -80,11 +80,12 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
   
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [customEventData, setCustomEventData] = useState<CustomEventData | null>(null);
+  const [relatedBookings, setRelatedBookings] = useState<BookingData[]>([]);
+  const [allTripEventIds, setAllTripEventIds] = useState<string[]>([]);
 
   const handleAssignmentChange = () => {
     setAssignmentVersion(v => v + 1);
   };
-  const [relatedBookings, setRelatedBookings] = useState<BookingData[]>([]);
 
   const getEventType = () => {
     if (!eventId) return null;
@@ -105,11 +106,18 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
   useEffect(() => {
     if (open && eventId) {
       setIsEditing(false);
+      setAllTripEventIds([]);
       fetchEventData();
-      fetchParticipants();
       generateFormLink();
     }
   }, [open, eventId]);
+
+  // Fetch participants once we have all trip event IDs
+  useEffect(() => {
+    if (open && dbId && allTripEventIds.length > 0) {
+      fetchParticipants();
+    }
+  }, [open, dbId, allTripEventIds]);
 
   const fetchEventData = async () => {
     if (!dbId || !eventType) return;
@@ -126,6 +134,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
         if (data) {
           setCustomEventData(data);
           setBookingData(null);
+          setAllTripEventIds([dbId]); // Custom events are single-day
         }
       } else if (eventType === 'booking') {
         const { data, error } = await supabase
@@ -140,14 +149,19 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           setCustomEventData(null);
           
           if (data.group_name) {
-            const { data: related } = await supabase
+            // Get ALL bookings in this trip group (including current one)
+            const { data: allGroupBookings } = await supabase
               .from("dive_bookings")
               .select("id, dive_date, end_date, group_name, dive_type, location, status, notes, participants_count")
               .eq("group_name", data.group_name)
-              .neq("id", dbId)
               .order("dive_date", { ascending: true });
             
-            setRelatedBookings(related || []);
+            const allIds = (allGroupBookings || []).map(b => b.id);
+            setAllTripEventIds(allIds);
+            setRelatedBookings((allGroupBookings || []).filter(b => b.id !== dbId));
+          } else {
+            setAllTripEventIds([dbId]);
+            setRelatedBookings([]);
           }
         }
       }
@@ -162,11 +176,13 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     
     setLoading(true);
     try {
-      // Fetch participants for both custom events and bookings
+      // For multi-day trips, fetch participants across ALL event IDs in the group
+      const eventIdsToQuery = allTripEventIds.length > 0 ? allTripEventIds : [dbId];
+      
       const { data, error } = await supabase
         .from("dive_trip_participants")
         .select("*")
-        .eq("event_id", dbId)
+        .in("event_id", eventIdsToQuery)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -660,6 +676,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                   <EquipmentRequestsTracker 
                     key={assignmentVersion}
                     eventId={dbId} 
+                    eventIds={allTripEventIds}
                     participants={participants}
                   />
                 </div>
@@ -671,6 +688,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                   </h3>
                   <InventoryAssignment
                     eventId={dbId}
+                    eventIds={allTripEventIds}
                     inventoryType="tank"
                     participants={participants}
                     tanksPerPerson={divesPerPerson}
@@ -685,6 +703,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                   </h3>
                   <InventoryAssignment
                     eventId={dbId}
+                    eventIds={allTripEventIds}
                     inventoryType="boat"
                     participants={participants}
                     onAssignmentChange={handleAssignmentChange}
@@ -698,6 +717,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                   </h3>
                   <InventoryAssignment
                     eventId={dbId}
+                    eventIds={allTripEventIds}
                     inventoryType="equipment"
                     participants={participants}
                     onAssignmentChange={handleAssignmentChange}

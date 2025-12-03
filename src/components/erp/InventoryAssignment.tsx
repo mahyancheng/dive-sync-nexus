@@ -39,6 +39,7 @@ interface InventoryItem {
 
 interface InventoryAssignmentProps {
   eventId: string;
+  eventIds?: string[]; // For multi-day trips
   inventoryType: "tank" | "boat" | "equipment";
   participants: Participant[];
   tanksPerPerson?: number;
@@ -47,6 +48,7 @@ interface InventoryAssignmentProps {
 
 export const InventoryAssignment = ({
   eventId,
+  eventIds,
   inventoryType,
   participants,
   tanksPerPerson = 2,
@@ -57,6 +59,8 @@ export const InventoryAssignment = ({
   const [loading, setLoading] = useState(false);
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
   const [eventDate, setEventDate] = useState<string | null>(null);
+
+  const effectiveEventIds = eventIds && eventIds.length > 0 ? eventIds : [eventId];
 
   useEffect(() => {
     fetchDiveCenterAndDate();
@@ -102,10 +106,11 @@ export const InventoryAssignment = ({
 
   const fetchAssignments = async () => {
     try {
+      // Fetch assignments for all event IDs (for multi-day trips)
       const { data, error } = await supabase
         .from("event_inventory_assignments")
         .select("*")
-        .eq("event_id", eventId)
+        .in("event_id", effectiveEventIds)
         .eq("inventory_type", inventoryType)
         .order("assigned_at", { ascending: false });
 
@@ -120,17 +125,19 @@ export const InventoryAssignment = ({
     if (!diveCenterId) return;
     
     try {
-      // Get items assigned to other events on the same date
+      // Get items assigned to other events (not in our trip group)
       let assignedItemIds: string[] = [];
       if (eventDate) {
-        // Get assignments from other events
+        // Get assignments from events NOT in our trip group
         const { data: otherAssignments } = await supabase
           .from("event_inventory_assignments")
-          .select("tank_id, boat_id, equipment_id, event_id")
-          .neq("event_id", eventId);
+          .select("tank_id, boat_id, equipment_id, event_id");
         
         if (otherAssignments) {
           otherAssignments.forEach(e => {
+            // Skip items assigned to events in our trip group
+            if (effectiveEventIds.includes(e.event_id)) return;
+            
             if (inventoryType === "tank" && e.tank_id) assignedItemIds.push(e.tank_id);
             if (inventoryType === "boat" && e.boat_id) assignedItemIds.push(e.boat_id);
             if (inventoryType === "equipment" && e.equipment_id) assignedItemIds.push(e.equipment_id);

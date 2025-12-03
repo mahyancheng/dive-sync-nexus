@@ -22,6 +22,7 @@ interface Assignment {
 
 interface EquipmentRequestsTrackerProps {
   eventId: string;
+  eventIds?: string[]; // For multi-day trips
   participants: Array<{
     id: string;
     participant_name: string;
@@ -33,17 +34,19 @@ interface EquipmentRequestsTrackerProps {
   }>;
 }
 
-export const EquipmentRequestsTracker = ({ eventId, participants }: EquipmentRequestsTrackerProps) => {
+export const EquipmentRequestsTracker = ({ eventId, eventIds, participants }: EquipmentRequestsTrackerProps) => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const effectiveEventIds = eventIds && eventIds.length > 0 ? eventIds : [eventId];
+
   useEffect(() => {
     fetchAssignments();
-  }, [eventId, participants]);
+  }, [eventId, eventIds, participants]);
 
   const fetchAssignments = async () => {
     try {
-      // Fetch equipment assignments with equipment details
+      // Fetch equipment assignments across all event IDs (for multi-day trips)
       const { data, error } = await supabase
         .from("event_inventory_assignments")
         .select(`
@@ -57,7 +60,7 @@ export const EquipmentRequestsTracker = ({ eventId, participants }: EquipmentReq
             status
           )
         `)
-        .eq("event_id", eventId)
+        .in("event_id", effectiveEventIds)
         .eq("inventory_type", "equipment");
 
       if (error) throw error;
