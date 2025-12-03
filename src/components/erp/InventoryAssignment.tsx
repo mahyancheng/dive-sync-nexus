@@ -119,16 +119,18 @@ export const InventoryAssignment = ({
       
       const mapped = data?.map(item => {
         let displayName = "";
+        const code = item.id.slice(0, 8).toUpperCase();
         if (inventoryType === "tank") {
-          displayName = `Tank ${item.tank_number}`;
+          displayName = `#${item.tank_number || code}`;
         } else if (inventoryType === "boat") {
           displayName = item.name;
         } else {
-          displayName = item.size ? `${item.equipment_type} (${item.size})` : item.equipment_type;
+          displayName = `#${code} - ${item.equipment_type}${item.size ? ` (${item.size})` : ''}`;
         }
         return {
           ...item,
           name: displayName,
+          code,
           status: item.status || "available"
         };
       }) || [];
