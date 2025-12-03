@@ -257,6 +257,7 @@ export type Database = {
         Row: {
           boat_id: string | null
           booking_date: string
+          color: string | null
           created_at: string
           customer_id: string
           deposit_amount: number | null
@@ -279,6 +280,7 @@ export type Database = {
         Insert: {
           boat_id?: string | null
           booking_date: string
+          color?: string | null
           created_at?: string
           customer_id: string
           deposit_amount?: number | null
@@ -301,6 +303,7 @@ export type Database = {
         Update: {
           boat_id?: string | null
           booking_date?: string
+          color?: string | null
           created_at?: string
           customer_id?: string
           deposit_amount?: number | null
