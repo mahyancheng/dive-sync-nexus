@@ -136,6 +136,68 @@ export function EventManager({
       {view==="week" && <WeekView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} />}
       {view==="day" && <DayView currentDate={currentDate} events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} />}
       {view==="list" && <ListView events={filteredEvents} onEventClick={(e)=>{onEventClick?.(e.id)}} />}
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setIsCreating(false); setSelectedEvent(null); setNewEvent({ title: "", color: "blue", completed: false }); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isCreating ? "Create New Event" : "Edit Event"}</DialogTitle>
+            <DialogDescription>{isCreating ? "Add a new event to your calendar" : "Update event details"}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={isCreating ? newEvent.title || "" : selectedEvent?.title || ""}
+                onChange={(e) => isCreating ? setNewEvent({...newEvent, title: e.target.value}) : setSelectedEvent(selectedEvent ? {...selectedEvent, title: e.target.value} : null)}
+                placeholder="Event title"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={isCreating ? newEvent.description || "" : selectedEvent?.description || ""}
+                onChange={(e) => isCreating ? setNewEvent({...newEvent, description: e.target.value}) : setSelectedEvent(selectedEvent ? {...selectedEvent, description: e.target.value} : null)}
+                placeholder="Event description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="start">Start Time</Label>
+                <Input
+                  id="start"
+                  type="datetime-local"
+                  value={isCreating ? timeInputValue(newEvent.startTime) : timeInputValue(selectedEvent?.startTime)}
+                  onChange={(e) => {
+                    const date = new Date(e.target.value);
+                    isCreating ? setNewEvent({...newEvent, startTime: date}) : setSelectedEvent(selectedEvent ? {...selectedEvent, startTime: date} : null);
+                  }}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="end">End Time</Label>
+                <Input
+                  id="end"
+                  type="datetime-local"
+                  value={isCreating ? timeInputValue(newEvent.endTime) : timeInputValue(selectedEvent?.endTime)}
+                  onChange={(e) => {
+                    const date = new Date(e.target.value);
+                    isCreating ? setNewEvent({...newEvent, endTime: date}) : setSelectedEvent(selectedEvent ? {...selectedEvent, endTime: date} : null);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            {!isCreating && selectedEvent && (
+              <Button variant="destructive" onClick={() => handleDelete(selectedEvent.id)}>Delete</Button>
+            )}
+            <Button onClick={isCreating ? handleCreate : handleSave}>{isCreating ? "Create" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
