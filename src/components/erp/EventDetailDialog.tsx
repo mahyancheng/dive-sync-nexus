@@ -47,6 +47,7 @@ interface BookingData {
   notes: string | null;
   status: string;
   participants_count: number;
+  color: string | null;
 }
 
 interface CustomEventData {
@@ -139,7 +140,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
       } else if (eventType === 'booking') {
         const { data, error } = await supabase
           .from("dive_bookings")
-          .select("id, dive_date, end_date, group_name, dive_type, location, status, notes, participants_count")
+          .select("id, dive_date, end_date, group_name, dive_type, location, status, notes, participants_count, color")
           .eq("id", dbId)
           .maybeSingle();
 
@@ -152,7 +153,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
             // Get ALL bookings in this trip group (including current one)
             const { data: allGroupBookings } = await supabase
               .from("dive_bookings")
-              .select("id, dive_date, end_date, group_name, dive_type, location, status, notes, participants_count")
+              .select("id, dive_date, end_date, group_name, dive_type, location, status, notes, participants_count, color")
               .eq("group_name", data.group_name)
               .order("dive_date", { ascending: true });
             
@@ -253,19 +254,30 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
     if (!bookingData || !dbId) return;
     
     try {
+      const updateData = {
+        group_name: bookingData.group_name,
+        dive_date: bookingData.dive_date,
+        end_date: bookingData.end_date,
+        dive_type: bookingData.dive_type,
+        location: bookingData.location,
+        notes: bookingData.notes,
+        color: bookingData.color,
+      };
+
       const { error } = await supabase
         .from("dive_bookings")
-        .update({
-          group_name: bookingData.group_name,
-          dive_date: bookingData.dive_date,
-          end_date: bookingData.end_date,
-          dive_type: bookingData.dive_type,
-          location: bookingData.location,
-          notes: bookingData.notes,
-        })
+        .update(updateData)
         .eq("id", dbId);
 
       if (error) throw error;
+
+      // If this is part of a multi-day trip, sync color across all days
+      if (bookingData.group_name && allTripEventIds.length > 1) {
+        await supabase
+          .from("dive_bookings")
+          .update({ color: bookingData.color })
+          .eq("group_name", bookingData.group_name);
+      }
       
       toast.success("Booking updated");
       setIsEditing(false);
@@ -275,6 +287,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           title: bookingData.group_name || "Booking",
           startTime: new Date(bookingData.dive_date),
           endTime: bookingData.end_date ? new Date(bookingData.end_date) : undefined,
+          color: bookingData.color as any,
         });
       }
     } catch (error) {
@@ -518,6 +531,30 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
                         onChange={(e) => setBookingData({ ...bookingData, notes: e.target.value })}
                         placeholder="Additional notes..."
                       />
+                    </div>
+                    <div>
+                      <Label>Calendar Color</Label>
+                      <Select 
+                        value={bookingData.color || "blue"} 
+                        onValueChange={(value) => setBookingData({ ...bookingData, color: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="blue">🔵 Blue</SelectItem>
+                          <SelectItem value="red">🔴 Red</SelectItem>
+                          <SelectItem value="green">🟢 Green</SelectItem>
+                          <SelectItem value="yellow">🟡 Yellow</SelectItem>
+                          <SelectItem value="purple">🟣 Purple</SelectItem>
+                          <SelectItem value="orange">🟠 Orange</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {allTripEventIds.length > 1 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Color will sync across all {allTripEventIds.length} days of this trip
+                        </p>
+                      )}
                     </div>
                   </div>
                 ) : (

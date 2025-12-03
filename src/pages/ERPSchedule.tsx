@@ -116,7 +116,6 @@ const ERPSchedule = () => {
       bookings.forEach(booking => {
         const startTime = new Date(booking.dive_date);
         const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000); // Add 2 hours
-        const priority = booking.status === "confirmed" ? "high" : "medium";
         
         allEvents.push({
           id: `booking-${booking.id}`,
@@ -124,7 +123,7 @@ const ERPSchedule = () => {
           description: `${booking.participants_count} divers - ${booking.dive_type || "Custom"}${booking.location || experiencesMap[booking.experience_id]?.location ? ` at ${booking.location || experiencesMap[booking.experience_id]?.location}` : ''}`,
           startTime,
           endTime,
-          color: priority === "high" ? "red" : priority === "medium" ? "yellow" : "green",
+          color: booking.color || "blue",
           category: "booking",
         });
       });
