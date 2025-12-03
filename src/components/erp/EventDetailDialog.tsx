@@ -623,6 +623,30 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           <TabsContent value="equipment" className="space-y-6">
             {dbId ? (
               <>
+                {/* Equipment Requests Summary */}
+                {participants.some(p => p.equipment_requests && p.equipment_requests.length > 0) && (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Equipment Requested by Participants
+                    </h3>
+                    <div className="space-y-2">
+                      {participants.filter(p => p.equipment_requests && p.equipment_requests.length > 0).map((participant) => (
+                        <div key={participant.id} className="flex items-start gap-3 text-sm">
+                          <span className="font-medium min-w-[120px]">{participant.participant_name}:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {participant.equipment_requests?.map((eq) => (
+                              <Badge key={eq.id} variant="secondary" className="text-xs">
+                                {eq.equipment_type}{eq.size ? ` (${eq.size})` : ''}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   <h3 className="font-semibold flex items-center gap-2">
                     <Cylinder className="w-4 h-4" />
