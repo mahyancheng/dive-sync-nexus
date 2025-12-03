@@ -34,18 +34,23 @@ interface InventoryItem {
   size?: string;
   status: string;
   code: string;
+  max_capacity?: number;
 }
 
 interface InventoryAssignmentProps {
   eventId: string;
   inventoryType: "tank" | "boat" | "equipment";
   participants: Participant[];
+  tanksPerPerson?: number;
+  onAssignmentChange?: () => void;
 }
 
 export const InventoryAssignment = ({
   eventId,
   inventoryType,
   participants,
+  tanksPerPerson = 2,
+  onAssignmentChange,
 }: InventoryAssignmentProps) => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -137,7 +142,7 @@ export const InventoryAssignment = ({
       if (inventoryType === "tank") {
         query = supabase.from("dive_tanks").select("id, tank_number, status").eq("dive_center_id", diveCenterId);
       } else if (inventoryType === "boat") {
-        query = supabase.from("boats").select("id, name, status").eq("dive_center_id", diveCenterId);
+        query = supabase.from("boats").select("id, name, status, max_capacity").eq("dive_center_id", diveCenterId);
       } else {
         query = supabase.from("dive_equipment").select("id, equipment_type, size, status").eq("dive_center_id", diveCenterId);
       }
@@ -151,7 +156,7 @@ export const InventoryAssignment = ({
         if (inventoryType === "tank") {
           displayName = `#${item.tank_number || code}`;
         } else if (inventoryType === "boat") {
-          displayName = item.name;
+          displayName = `${item.name} (Cap: ${item.max_capacity || '?'})`;
         } else {
           displayName = `#${code} - ${item.equipment_type}${item.size ? ` (${item.size})` : ''}`;
         }
@@ -163,6 +168,7 @@ export const InventoryAssignment = ({
           ...item,
           name: displayName,
           code,
+          max_capacity: item.max_capacity,
           status: isAssignedElsewhere ? "assigned_elsewhere" : (item.status || "available")
         };
       }) || [];
@@ -209,6 +215,7 @@ export const InventoryAssignment = ({
       
       toast.success("Assignment added");
       fetchAssignments();
+      onAssignmentChange?.();
     } catch (error) {
       console.error("Error adding assignment:", error);
       toast.error("Failed to add assignment");
@@ -232,6 +239,7 @@ export const InventoryAssignment = ({
       
       toast.success("Assignment updated");
       fetchAssignments();
+      onAssignmentChange?.();
     } catch (error) {
       console.error("Error updating assignment:", error);
       toast.error("Failed to update assignment");
@@ -249,6 +257,7 @@ export const InventoryAssignment = ({
       
       toast.success("Assignment deleted");
       fetchAssignments();
+      onAssignmentChange?.();
     } catch (error) {
       console.error("Error deleting assignment:", error);
       toast.error("Failed to delete assignment");
@@ -263,12 +272,14 @@ export const InventoryAssignment = ({
 
   // Smart auto-assign that matches equipment requests by type AND size
   const smartAutoAssign = async () => {
-    if (inventoryType !== "equipment") {
-      // For tanks/boats, use simple FIFO
-      return autoAssignFIFO();
+    if (inventoryType === "tank") {
+      return autoAssignTanks();
+    }
+    if (inventoryType === "boat") {
+      return autoAssignBoats();
     }
 
-    // Get all equipment requests from participants
+    // Equipment: Get all equipment requests from participants
     const allRequests: Array<{ participantId: string; type: string; size: string | null }> = [];
     participants.forEach(p => {
       (p.equipment_requests || []).forEach(req => {
@@ -362,6 +373,7 @@ export const InventoryAssignment = ({
         toast.success(`Smart-assigned ${newAssignments.length} equipment items`);
       }
       fetchAssignments();
+      onAssignmentChange?.();
     } catch (error) {
       console.error("Error smart-assigning:", error);
       toast.error("Failed to auto-assign");
@@ -370,42 +382,52 @@ export const InventoryAssignment = ({
     }
   };
 
-  const autoAssignFIFO = async () => {
-    const unassignedParticipants = participants.filter(
-      p => !assignments.some(a => a.participant_id === p.id)
-    );
-    
-    if (unassignedParticipants.length === 0) {
-      toast.info("All participants already assigned");
+  // Auto-assign tanks: X tanks per person based on number of dives
+  const autoAssignTanks = async () => {
+    const availableTanks = inventoryItems.filter(item => item.status === "available");
+    const tanksNeeded = participants.length * tanksPerPerson;
+    const existingTankCount = assignments.length;
+    const tanksToAssign = tanksNeeded - existingTankCount;
+
+    if (tanksToAssign <= 0) {
+      toast.info(`Already have ${existingTankCount} tanks assigned (need ${tanksNeeded})`);
       return;
     }
 
-    const availableItems = inventoryItems.filter(item => item.status === "available");
-    
-    if (availableItems.length === 0) {
-      toast.error(`No available ${inventoryType}s`);
+    if (availableTanks.length === 0) {
+      toast.error("No available tanks");
       return;
     }
 
     setLoading(true);
     try {
-      const newAssignments = unassignedParticipants.slice(0, availableItems.length).map((participant, index) => {
-        const insertData: any = {
-          event_id: eventId,
-          inventory_type: inventoryType,
-          participant_id: participant.id,
-        };
-
-        if (inventoryType === "tank") {
-          insertData.tank_id = availableItems[index].id;
-        } else if (inventoryType === "boat") {
-          insertData.boat_id = availableItems[index].id;
-        } else {
-          insertData.equipment_id = availableItems[index].id;
+      const newAssignments: any[] = [];
+      const usedTankIds = new Set(assignments.map(a => a.tank_id).filter(Boolean));
+      
+      // Assign tanks to each participant
+      for (const participant of participants) {
+        const participantTanks = assignments.filter(a => a.participant_id === participant.id).length;
+        const tanksNeededForParticipant = tanksPerPerson - participantTanks;
+        
+        for (let i = 0; i < tanksNeededForParticipant; i++) {
+          const availableTank = availableTanks.find(t => !usedTankIds.has(t.id));
+          if (availableTank) {
+            usedTankIds.add(availableTank.id);
+            newAssignments.push({
+              event_id: eventId,
+              inventory_type: "tank",
+              participant_id: participant.id,
+              tank_id: availableTank.id,
+            });
+          }
         }
+      }
 
-        return insertData;
-      });
+      if (newAssignments.length === 0) {
+        toast.error("No tanks available for assignment");
+        setLoading(false);
+        return;
+      }
 
       const { error } = await supabase
         .from("event_inventory_assignments")
@@ -413,14 +435,100 @@ export const InventoryAssignment = ({
 
       if (error) throw error;
       
-      toast.success(`Auto-assigned ${newAssignments.length} ${inventoryType}(s)`);
+      if (newAssignments.length < tanksToAssign) {
+        toast.warning(`Assigned ${newAssignments.length} tanks. ${tanksToAssign - newAssignments.length} more needed but not available`);
+      } else {
+        toast.success(`Assigned ${newAssignments.length} tanks (${tanksPerPerson} per person)`);
+      }
       fetchAssignments();
+      onAssignmentChange?.();
     } catch (error) {
-      console.error("Error auto-assigning:", error);
-      toast.error("Failed to auto-assign");
+      console.error("Error auto-assigning tanks:", error);
+      toast.error("Failed to auto-assign tanks");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Auto-assign boats: fit participants into boats based on capacity
+  const autoAssignBoats = async () => {
+    const availableBoats = inventoryItems.filter(item => item.status === "available");
+    
+    if (availableBoats.length === 0) {
+      toast.error("No available boats");
+      return;
+    }
+
+    // Get participants without boat assignment
+    const assignedParticipantIds = new Set(assignments.map(a => a.participant_id).filter(Boolean));
+    const unassignedParticipants = participants.filter(p => !assignedParticipantIds.has(p.id));
+
+    if (unassignedParticipants.length === 0) {
+      toast.info("All participants already assigned to boats");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const newAssignments: any[] = [];
+      const usedBoatIds = new Set(assignments.map(a => a.boat_id).filter(Boolean));
+      
+      // Sort boats by capacity (largest first)
+      const sortedBoats = [...availableBoats].sort((a, b) => (b.max_capacity || 0) - (a.max_capacity || 0));
+      
+      let remainingParticipants = [...unassignedParticipants];
+      
+      for (const boat of sortedBoats) {
+        if (remainingParticipants.length === 0) break;
+        if (usedBoatIds.has(boat.id)) continue;
+        
+        const capacity = boat.max_capacity || 10;
+        const participantsForBoat = remainingParticipants.slice(0, capacity);
+        
+        for (const participant of participantsForBoat) {
+          newAssignments.push({
+            event_id: eventId,
+            inventory_type: "boat",
+            participant_id: participant.id,
+            boat_id: boat.id,
+          });
+        }
+        
+        usedBoatIds.add(boat.id);
+        remainingParticipants = remainingParticipants.slice(capacity);
+      }
+
+      if (newAssignments.length === 0) {
+        toast.error("No boats available for assignment");
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("event_inventory_assignments")
+        .insert(newAssignments);
+
+      if (error) throw error;
+      
+      if (remainingParticipants.length > 0) {
+        toast.warning(`Assigned ${newAssignments.length} participants. ${remainingParticipants.length} still need boats (insufficient capacity)`);
+      } else {
+        toast.success(`Assigned ${newAssignments.length} participants to boats`);
+      }
+      fetchAssignments();
+      onAssignmentChange?.();
+    } catch (error) {
+      console.error("Error auto-assigning boats:", error);
+      toast.error("Failed to auto-assign boats");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const autoAssignFIFO = async () => {
+    if (inventoryType === "tank") return autoAssignTanks();
+    if (inventoryType === "boat") return autoAssignBoats();
+    return smartAutoAssign();
   };
 
   const availableCount = inventoryItems.filter(item => item.status === "available").length;
