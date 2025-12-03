@@ -52,26 +52,14 @@ export const DiveTripForm = () => {
     equipment_notes: "",
   });
 
+  // Standard equipment types for rental
+  const standardEquipmentTypes = ["BCD", "Regulator", "Wetsuit", "Fins", "Mask", "Dive Computer", "Torch/Light", "SMB"];
+
   useEffect(() => {
-    fetchEquipmentTypes();
+    // Initialize with standard equipment types
+    setAvailableEquipmentTypes(standardEquipmentTypes);
+    setEquipmentRequests(standardEquipmentTypes.map(type => ({ equipment_type: type, needed: false, size: "" })));
   }, []);
-
-  const fetchEquipmentTypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("dive_equipment")
-        .select("equipment_type")
-        .eq("status", "available");
-
-      if (error) throw error;
-
-      const uniqueTypes = [...new Set(data?.map(item => item.equipment_type) || [])];
-      setAvailableEquipmentTypes(uniqueTypes);
-      setEquipmentRequests(uniqueTypes.map(type => ({ equipment_type: type, needed: false, size: "" })));
-    } catch (error) {
-      console.error("Error fetching equipment types:", error);
-    }
-  };
 
   const equipmentNeedsSize = (type: string) => {
     const sizableTypes = ["BCD", "Fins", "Wetsuit"];
