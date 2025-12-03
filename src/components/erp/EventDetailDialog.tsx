@@ -67,9 +67,10 @@ interface EventDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onUpdate?: (id: string, data: Partial<EventManagerEvent>) => void;
   onDelete?: (id: string) => void;
+  onRefresh?: () => void;
 }
 
-export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDelete }: EventDetailDialogProps) => {
+export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDelete, onRefresh }: EventDetailDialogProps) => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
   const [formLink, setFormLink] = useState("");
@@ -242,6 +243,7 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
       };
 
       onUpdate?.(eventId, payload);
+      onRefresh?.(); // Refresh calendar immediately
       toast.success("Event updated");
       setIsEditing(false);
     } catch (error) {
@@ -281,6 +283,9 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
       
       toast.success("Booking updated");
       setIsEditing(false);
+      
+      // Refresh calendar immediately
+      onRefresh?.();
       
       if (onUpdate && eventId) {
         onUpdate(eventId, {
