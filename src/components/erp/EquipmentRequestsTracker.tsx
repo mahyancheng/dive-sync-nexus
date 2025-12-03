@@ -39,7 +39,7 @@ export const EquipmentRequestsTracker = ({ eventId, participants }: EquipmentReq
 
   useEffect(() => {
     fetchAssignments();
-  }, [eventId]);
+  }, [eventId, participants]);
 
   const fetchAssignments = async () => {
     try {
@@ -90,12 +90,11 @@ export const EquipmentRequestsTracker = ({ eventId, participants }: EquipmentReq
     }))
   );
 
-  // Check if a request has been assigned
+  // Check if a request has been assigned - match by participant AND equipment type
   const getAssignmentForRequest = (request: EquipmentRequest) => {
     return assignments.find(a => 
       a.participant_id === request.participant_id &&
-      a.equipment_type?.toLowerCase() === request.equipment_type?.toLowerCase() &&
-      (!request.size || a.equipment_size === request.size)
+      a.equipment_type?.toLowerCase() === request.equipment_type?.toLowerCase()
     );
   };
 
@@ -168,10 +167,16 @@ export const EquipmentRequestsTracker = ({ eventId, participants }: EquipmentReq
           <div className="space-y-1">
             {assignedRequests.map((request) => {
               const assignment = getAssignmentForRequest(request);
+              const sizeMatches = !request.size || assignment?.equipment_size === request.size;
+              
               return (
                 <div 
                   key={request.id} 
-                  className="flex items-center justify-between p-2 border border-green-500/30 rounded bg-green-500/5 text-sm"
+                  className={`flex items-center justify-between p-2 border rounded text-sm ${
+                    sizeMatches 
+                      ? "border-green-500/30 bg-green-500/5" 
+                      : "border-yellow-500/30 bg-yellow-500/5"
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{request.participant_name}</span>
@@ -183,9 +188,17 @@ export const EquipmentRequestsTracker = ({ eventId, participants }: EquipmentReq
                     <Badge variant="secondary" className="text-xs font-mono">
                       #{assignment?.equipment_code || 'N/A'}
                     </Badge>
-                    {assignment?.equipment_size && assignment.equipment_size !== request.size && (
-                      <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-500">
+                    {assignment?.equipment_size && (
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs ${
+                          sizeMatches 
+                            ? "text-green-600 border-green-500" 
+                            : "text-yellow-600 border-yellow-500"
+                        }`}
+                      >
                         Size: {assignment.equipment_size}
+                        {!sizeMatches && " ⚠️"}
                       </Badge>
                     )}
                   </div>
