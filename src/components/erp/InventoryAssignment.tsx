@@ -3,11 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Wand2 } from "lucide-react";
+
+interface EquipmentRequest {
+  equipment_type: string | null;
+  size: string | null;
+}
 
 interface Participant {
   id: string;
   participant_name: string;
+  equipment_requests?: EquipmentRequest[];
 }
 
 interface Assignment {
@@ -27,6 +33,7 @@ interface InventoryItem {
   equipment_type?: string;
   size?: string;
   status: string;
+  code: string;
 }
 
 interface InventoryAssignmentProps {
@@ -44,9 +51,10 @@ export const InventoryAssignment = ({
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
+  const [eventDate, setEventDate] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDiveCenterId();
+    fetchDiveCenterAndDate();
   }, [eventId]);
 
   useEffect(() => {
@@ -56,29 +64,31 @@ export const InventoryAssignment = ({
     }
   }, [eventId, inventoryType, diveCenterId]);
 
-  const fetchDiveCenterId = async () => {
+  const fetchDiveCenterAndDate = async () => {
     try {
       // Try to get dive_center_id from custom_events first
       const { data: customEvent } = await supabase
         .from("custom_events")
-        .select("dive_center_id")
+        .select("dive_center_id, start_time")
         .eq("id", eventId)
         .maybeSingle();
 
       if (customEvent?.dive_center_id) {
         setDiveCenterId(customEvent.dive_center_id);
+        setEventDate(customEvent.start_time);
         return;
       }
 
       // Try from dive_bookings
       const { data: booking } = await supabase
         .from("dive_bookings")
-        .select("dive_center_id")
+        .select("dive_center_id, dive_date")
         .eq("id", eventId)
         .maybeSingle();
 
       if (booking?.dive_center_id) {
         setDiveCenterId(booking.dive_center_id);
+        setEventDate(booking.dive_date);
       }
     } catch (error) {
       console.error("Error fetching dive center:", error);
@@ -105,6 +115,24 @@ export const InventoryAssignment = ({
     if (!diveCenterId) return;
     
     try {
+      // Get items assigned to other events on the same date
+      let assignedItemIds: string[] = [];
+      if (eventDate) {
+        // Get assignments from other events
+        const { data: otherAssignments } = await supabase
+          .from("event_inventory_assignments")
+          .select("tank_id, boat_id, equipment_id, event_id")
+          .neq("event_id", eventId);
+        
+        if (otherAssignments) {
+          otherAssignments.forEach(e => {
+            if (inventoryType === "tank" && e.tank_id) assignedItemIds.push(e.tank_id);
+            if (inventoryType === "boat" && e.boat_id) assignedItemIds.push(e.boat_id);
+            if (inventoryType === "equipment" && e.equipment_id) assignedItemIds.push(e.equipment_id);
+          });
+        }
+      }
+
       let query;
       if (inventoryType === "tank") {
         query = supabase.from("dive_tanks").select("id, tank_number, status").eq("dive_center_id", diveCenterId);
@@ -118,8 +146,8 @@ export const InventoryAssignment = ({
       if (error) throw error;
       
       const mapped = data?.map(item => {
-        let displayName = "";
         const code = item.id.slice(0, 8).toUpperCase();
+        let displayName = "";
         if (inventoryType === "tank") {
           displayName = `#${item.tank_number || code}`;
         } else if (inventoryType === "boat") {
@@ -127,11 +155,15 @@ export const InventoryAssignment = ({
         } else {
           displayName = `#${code} - ${item.equipment_type}${item.size ? ` (${item.size})` : ''}`;
         }
+        
+        // Mark as unavailable if assigned to another event
+        const isAssignedElsewhere = assignedItemIds.includes(item.id);
+        
         return {
           ...item,
           name: displayName,
           code,
-          status: item.status || "available"
+          status: isAssignedElsewhere ? "assigned_elsewhere" : (item.status || "available")
         };
       }) || [];
       
@@ -149,18 +181,24 @@ export const InventoryAssignment = ({
 
     setLoading(true);
     try {
+      const availableItem = inventoryItems.find(i => i.status === "available");
+      if (!availableItem) {
+        toast.error(`No available ${inventoryType}s`);
+        setLoading(false);
+        return;
+      }
+
       const insertData: any = {
         event_id: eventId,
         inventory_type: inventoryType,
       };
 
-      // Add the appropriate ID field
       if (inventoryType === "tank") {
-        insertData.tank_id = inventoryItems[0].id;
+        insertData.tank_id = availableItem.id;
       } else if (inventoryType === "boat") {
-        insertData.boat_id = inventoryItems[0].id;
+        insertData.boat_id = availableItem.id;
       } else {
-        insertData.equipment_id = inventoryItems[0].id;
+        insertData.equipment_id = availableItem.id;
       }
 
       const { error } = await supabase
@@ -223,7 +261,116 @@ export const InventoryAssignment = ({
     return "equipment_id";
   };
 
-  const autoAssign = async () => {
+  // Smart auto-assign that matches equipment requests by type AND size
+  const smartAutoAssign = async () => {
+    if (inventoryType !== "equipment") {
+      // For tanks/boats, use simple FIFO
+      return autoAssignFIFO();
+    }
+
+    // Get all equipment requests from participants
+    const allRequests: Array<{ participantId: string; type: string; size: string | null }> = [];
+    participants.forEach(p => {
+      (p.equipment_requests || []).forEach(req => {
+        if (req.equipment_type) {
+          allRequests.push({
+            participantId: p.id,
+            type: req.equipment_type,
+            size: req.size,
+          });
+        }
+      });
+    });
+
+    if (allRequests.length === 0) {
+      toast.info("No equipment requests from participants");
+      return;
+    }
+
+    // Get already assigned participant+type combos
+    const existingAssignments = assignments.map(a => {
+      const item = inventoryItems.find(i => i.id === a.equipment_id);
+      return {
+        participantId: a.participant_id,
+        type: item?.equipment_type,
+      };
+    });
+
+    // Filter out requests that are already assigned
+    const pendingRequests = allRequests.filter(req => 
+      !existingAssignments.some(ea => 
+        ea.participantId === req.participantId && 
+        ea.type?.toLowerCase() === req.type.toLowerCase()
+      )
+    );
+
+    if (pendingRequests.length === 0) {
+      toast.info("All equipment requests already assigned");
+      return;
+    }
+
+    setLoading(true);
+    const newAssignments: any[] = [];
+    const usedItemIds = new Set(assignments.map(a => a.equipment_id).filter(Boolean));
+
+    for (const request of pendingRequests) {
+      // Find matching equipment by type and size
+      let matchingItem = inventoryItems.find(item => 
+        item.equipment_type?.toLowerCase() === request.type.toLowerCase() &&
+        item.size === request.size &&
+        item.status === "available" &&
+        !usedItemIds.has(item.id)
+      );
+
+      // If no exact size match, try to find same type with any available size
+      if (!matchingItem) {
+        matchingItem = inventoryItems.find(item => 
+          item.equipment_type?.toLowerCase() === request.type.toLowerCase() &&
+          item.status === "available" &&
+          !usedItemIds.has(item.id)
+        );
+      }
+
+      if (matchingItem) {
+        usedItemIds.add(matchingItem.id);
+        newAssignments.push({
+          event_id: eventId,
+          inventory_type: "equipment",
+          participant_id: request.participantId,
+          equipment_id: matchingItem.id,
+        });
+      }
+    }
+
+    if (newAssignments.length === 0) {
+      toast.error("No matching equipment available in inventory");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("event_inventory_assignments")
+        .insert(newAssignments);
+
+      if (error) throw error;
+      
+      const unmatched = pendingRequests.length - newAssignments.length;
+      if (unmatched > 0) {
+        toast.warning(`Assigned ${newAssignments.length} items. ${unmatched} requests could not be matched (insufficient inventory)`);
+      } else {
+        toast.success(`Smart-assigned ${newAssignments.length} equipment items`);
+      }
+      fetchAssignments();
+    } catch (error) {
+      console.error("Error smart-assigning:", error);
+      toast.error("Failed to auto-assign");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const autoAssignFIFO = async () => {
     const unassignedParticipants = participants.filter(
       p => !assignments.some(a => a.participant_id === p.id)
     );
@@ -288,12 +435,19 @@ export const InventoryAssignment = ({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={autoAssign} disabled={loading}>
-            Auto Assign (FIFO)
-          </Button>
+          {inventoryType === "equipment" ? (
+            <Button size="sm" variant="outline" onClick={smartAutoAssign} disabled={loading}>
+              <Wand2 className="w-4 h-4 mr-2" />
+              Smart Assign
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={autoAssignFIFO} disabled={loading}>
+              Auto Assign
+            </Button>
+          )}
           <Button size="sm" onClick={addAssignment} disabled={loading}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Assignment
+            Add
           </Button>
         </div>
       </div>
@@ -304,71 +458,80 @@ export const InventoryAssignment = ({
         </div>
       ) : (
         <div className="space-y-2">
-          {assignments.map((assignment) => (
-            <div
-              key={assignment.id}
-              className="p-3 border rounded-lg flex items-center gap-3"
-            >
-              <div className="flex-1 grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">
-                    {inventoryType === "tank" ? "Tank" : inventoryType === "boat" ? "Boat" : "Equipment"}
-                  </label>
-                  <Select
-                    value={assignment[getInventoryIdField()] || ""}
-                    onValueChange={(value) =>
-                      updateAssignment(assignment.id, getInventoryIdField() as any, value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={`Select ${inventoryType}`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {inventoryItems.map((item) => (
-                        <SelectItem key={item.id} value={item.id} disabled={item.status !== "available" && assignment[getInventoryIdField()] !== item.id}>
-                          {item.name} {item.status !== "available" && `(${item.status})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-xs text-muted-foreground">Participant</label>
-                  <Select
-                    value={assignment.participant_id || "unassigned"}
-                    onValueChange={(value) =>
-                      updateAssignment(
-                        assignment.id,
-                        "participant_id",
-                        value === "unassigned" ? null : value
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select participant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {participants.map((participant) => (
-                        <SelectItem key={participant.id} value={participant.id}>
-                          {participant.participant_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => deleteAssignment(assignment.id)}
+          {assignments.map((assignment) => {
+            const itemId = assignment[getInventoryIdField()];
+            const item = inventoryItems.find(i => i.id === itemId);
+            
+            return (
+              <div
+                key={assignment.id}
+                className="p-3 border rounded-lg flex items-center gap-3"
               >
-                <Trash2 className="w-4 h-4 text-destructive" />
-              </Button>
-            </div>
-          ))}
+                <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">
+                      {inventoryType === "tank" ? "Tank" : inventoryType === "boat" ? "Boat" : "Equipment"}
+                    </label>
+                    <Select
+                      value={itemId || ""}
+                      onValueChange={(value) =>
+                        updateAssignment(assignment.id, getInventoryIdField() as any, value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Select ${inventoryType}`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {inventoryItems.map((item) => (
+                          <SelectItem 
+                            key={item.id} 
+                            value={item.id} 
+                            disabled={item.status !== "available" && itemId !== item.id}
+                          >
+                            {item.name} {item.status === "assigned_elsewhere" ? "(In Use)" : item.status !== "available" && itemId !== item.id ? `(${item.status})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground">Participant</label>
+                    <Select
+                      value={assignment.participant_id || "unassigned"}
+                      onValueChange={(value) =>
+                        updateAssignment(
+                          assignment.id,
+                          "participant_id",
+                          value === "unassigned" ? null : value
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select participant" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {participants.map((participant) => (
+                          <SelectItem key={participant.id} value={participant.id}>
+                            {participant.participant_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteAssignment(assignment.id)}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
