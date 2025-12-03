@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Link as LinkIcon, Package, Ship, Cylinder, Save, Trash2, Calendar, Edit, MapPin, ChevronRight } from "lucide-react";
 import { InventoryAssignment } from "./InventoryAssignment";
+import { EquipmentRequestsTracker } from "./EquipmentRequestsTracker";
 import { ParticipantDetailDialog } from "./ParticipantDetailDialog";
 import type { Event as EventManagerEvent } from "@/components/ui/event-manager";
 
@@ -623,29 +624,17 @@ export const EventDetailDialog = ({ eventId, open, onOpenChange, onUpdate, onDel
           <TabsContent value="equipment" className="space-y-6">
             {dbId ? (
               <>
-                {/* Equipment Requests Summary */}
-                {participants.some(p => p.equipment_requests && p.equipment_requests.length > 0) && (
-                  <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Package className="w-4 h-4" />
-                      Equipment Requested by Participants
-                    </h3>
-                    <div className="space-y-2">
-                      {participants.filter(p => p.equipment_requests && p.equipment_requests.length > 0).map((participant) => (
-                        <div key={participant.id} className="flex items-start gap-3 text-sm">
-                          <span className="font-medium min-w-[120px]">{participant.participant_name}:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {participant.equipment_requests?.map((eq) => (
-                              <Badge key={eq.id} variant="secondary" className="text-xs">
-                                {eq.equipment_type}{eq.size ? ` (${eq.size})` : ''}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Equipment Requests vs Assignments Tracker */}
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/10">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Package className="w-4 h-4" />
+                    Equipment Requests Status
+                  </h3>
+                  <EquipmentRequestsTracker 
+                    eventId={dbId} 
+                    participants={participants}
+                  />
+                </div>
 
                 <div className="space-y-3">
                   <h3 className="font-semibold flex items-center gap-2">
