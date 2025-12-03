@@ -7,9 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
 import { ChevronRight, ChevronLeft, CheckCircle } from "lucide-react";
+
+// Standardized size options for equipment
+const EQUIPMENT_SIZES = {
+  BCD: ["XS", "S", "M", "L", "XL", "XXL"],
+  Wetsuit: ["XS", "S", "M", "L", "XL", "XXL"],
+  Fins: ["36-37", "38-39", "40-41", "42-43", "44-45", "46-47"],
+};
 
 const generalInfoSchema = z.object({
   participant_name: z.string().trim().min(1, "Name is required").max(100),
@@ -62,8 +70,14 @@ export const DiveTripForm = () => {
   }, []);
 
   const equipmentNeedsSize = (type: string) => {
-    const sizableTypes = ["BCD", "Fins", "Wetsuit"];
-    return sizableTypes.some(t => type.toLowerCase().includes(t.toLowerCase()));
+    return ["BCD", "Fins", "Wetsuit"].includes(type);
+  };
+
+  const getSizeOptions = (type: string): string[] => {
+    if (type === "BCD") return EQUIPMENT_SIZES.BCD;
+    if (type === "Wetsuit") return EQUIPMENT_SIZES.Wetsuit;
+    if (type === "Fins") return EQUIPMENT_SIZES.Fins;
+    return [];
   };
 
   const handleEquipmentChange = (index: number, field: "needed" | "size", value: any) => {
@@ -342,13 +356,21 @@ export const DiveTripForm = () => {
                             <Label htmlFor={`equipment-${index}`}>{request.equipment_type}</Label>
                           </div>
                           {request.needed && equipmentNeedsSize(request.equipment_type) && (
-                            <Input
-                              placeholder={`Size (${request.equipment_type.includes("Fins") ? "e.g., 8, 9, 10" : "S/M/L/XL"})`}
-                              value={request.size}
-                              onChange={(e) => handleEquipmentChange(index, "size", e.target.value)}
-                              maxLength={10}
-                              className="ml-6"
-                            />
+                            <Select
+                              value={request.size || ""}
+                              onValueChange={(value) => handleEquipmentChange(index, "size", value)}
+                            >
+                              <SelectTrigger className="ml-6 w-40">
+                                <SelectValue placeholder="Select size" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getSizeOptions(request.equipment_type).map((size) => (
+                                  <SelectItem key={size} value={size}>
+                                    {size}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           )}
                         </div>
                       ))}
