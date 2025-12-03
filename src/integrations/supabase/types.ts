@@ -699,15 +699,7 @@ export type Database = {
           phone_number?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "dive_trip_participants_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "custom_events"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       equipment_assignments: {
         Row: {
