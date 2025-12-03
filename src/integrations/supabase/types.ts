@@ -941,13 +941,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "event_inventory_assignments_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "custom_events"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "event_inventory_assignments_participant_id_fkey"
             columns: ["participant_id"]
             isOneToOne: false
