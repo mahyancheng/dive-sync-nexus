@@ -43,11 +43,47 @@ export const InventoryAssignment = ({
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchAssignments();
-    fetchInventoryItems();
-  }, [eventId, inventoryType]);
+    fetchDiveCenterId();
+  }, [eventId]);
+
+  useEffect(() => {
+    if (diveCenterId) {
+      fetchAssignments();
+      fetchInventoryItems();
+    }
+  }, [eventId, inventoryType, diveCenterId]);
+
+  const fetchDiveCenterId = async () => {
+    try {
+      // Try to get dive_center_id from custom_events first
+      const { data: customEvent } = await supabase
+        .from("custom_events")
+        .select("dive_center_id")
+        .eq("id", eventId)
+        .maybeSingle();
+
+      if (customEvent?.dive_center_id) {
+        setDiveCenterId(customEvent.dive_center_id);
+        return;
+      }
+
+      // Try from dive_bookings
+      const { data: booking } = await supabase
+        .from("dive_bookings")
+        .select("dive_center_id")
+        .eq("id", eventId)
+        .maybeSingle();
+
+      if (booking?.dive_center_id) {
+        setDiveCenterId(booking.dive_center_id);
+      }
+    } catch (error) {
+      console.error("Error fetching dive center:", error);
+    }
+  };
 
   const fetchAssignments = async () => {
     try {
@@ -66,14 +102,16 @@ export const InventoryAssignment = ({
   };
 
   const fetchInventoryItems = async () => {
+    if (!diveCenterId) return;
+    
     try {
       let query;
       if (inventoryType === "tank") {
-        query = supabase.from("dive_tanks").select("id, tank_number, status");
+        query = supabase.from("dive_tanks").select("id, tank_number, status").eq("dive_center_id", diveCenterId);
       } else if (inventoryType === "boat") {
-        query = supabase.from("boats").select("id, name, status");
+        query = supabase.from("boats").select("id, name, status").eq("dive_center_id", diveCenterId);
       } else {
-        query = supabase.from("dive_equipment").select("id, equipment_type, size, status");
+        query = supabase.from("dive_equipment").select("id, equipment_type, size, status").eq("dive_center_id", diveCenterId);
       }
 
       const { data, error } = await query;
