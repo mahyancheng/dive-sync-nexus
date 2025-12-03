@@ -204,6 +204,24 @@ const ERPSchedule = () => {
     }
   };
 
+  const EVENT_COLORS = ["blue", "red", "green", "yellow", "purple", "orange"];
+
+  const getAutoColor = (targetDate: Date): string => {
+    const targetDateStr = targetDate.toDateString();
+    const colorsUsed = events
+      .filter(e => e.startTime.toDateString() === targetDateStr)
+      .map(e => e.color);
+    
+    // Find first color not used on this day
+    for (const color of EVENT_COLORS) {
+      if (!colorsUsed.includes(color)) {
+        return color;
+      }
+    }
+    // If all colors used, cycle back
+    return EVENT_COLORS[colorsUsed.length % EVENT_COLORS.length];
+  };
+
   const handleEventCreate = async (event: Omit<EventManagerEvent, "id">) => {
     if (!diveCenterId) return;
     
@@ -211,12 +229,15 @@ const ERPSchedule = () => {
     const endDate = new Date(event.endTime);
     const isMultiDay = startDate.toDateString() !== endDate.toDateString();
     
+    // Auto-assign color based on first day
+    const autoColor = event.color || getAutoColor(startDate);
+    
     if (isMultiDay) {
       // Create one event per day with a shared group ID
       const groupId = crypto.randomUUID();
       const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       
-      const events = [];
+      const newEvents = [];
       for (let i = 0; i < days; i++) {
         const dayStart = new Date(startDate);
         dayStart.setDate(startDate.getDate() + i);
@@ -231,14 +252,14 @@ const ERPSchedule = () => {
           dayEnd.setHours(event.endTime.getHours(), event.endTime.getMinutes(), 0, 0);
         }
         
-        events.push({
+        newEvents.push({
           dive_center_id: diveCenterId,
           title: event.title,
           description: event.description,
           start_time: dayStart.toISOString(),
           end_time: dayEnd.toISOString(),
           category: event.category || "custom",
-          color: event.color || "blue",
+          color: autoColor, // Same color for all days
           completed: false,
           dive_type: event.diveType,
           event_group_id: groupId,
@@ -247,7 +268,7 @@ const ERPSchedule = () => {
       
       const { error } = await supabase
         .from("custom_events")
-        .insert(events);
+        .insert(newEvents);
 
       if (error) {
         toast.error("Failed to create multi-day event");
@@ -267,7 +288,7 @@ const ERPSchedule = () => {
           start_time: event.startTime.toISOString(),
           end_time: event.endTime.toISOString(),
           category: event.category || "custom",
-          color: event.color || "blue",
+          color: autoColor,
           completed: false,
           dive_type: event.diveType,
         });
