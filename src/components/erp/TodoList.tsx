@@ -58,6 +58,8 @@ const TASK_TYPES: Record<string, { label: string; icon: typeof Package; color: s
   briefing: { label: "Briefing", icon: Users, color: "bg-green-500" },
   checkout: { label: "Checkout", icon: ClipboardList, color: "bg-orange-500" },
   equipment_check: { label: "Equipment Check", icon: Wrench, color: "bg-amber-500" },
+  equipment_item_check: { label: "Equipment Item", icon: Package, color: "bg-emerald-500" },
+  tank_item_check: { label: "Tank Check", icon: Gauge, color: "bg-sky-500" },
   participant_check: { label: "Participant Check", icon: Users, color: "bg-teal-500" },
   maintenance: { label: "Maintenance", icon: Wrench, color: "bg-red-500" },
   tank_service: { label: "Tank Service", icon: Gauge, color: "bg-purple-500" },
@@ -526,6 +528,114 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
         }
       }
 
+      // Generate detailed per-item equipment checklists from assignments
+      // Get all event IDs (both bookings and custom events)
+      const allEventIds = [
+        ...(bookings || []).map(b => b.id),
+        ...(customEvents || []).map(e => e.id)
+      ];
+
+      if (allEventIds.length > 0) {
+        // Fetch all assignments for these events
+        const { data: allAssignments } = await supabase
+          .from("event_inventory_assignments")
+          .select(`
+            id,
+            event_id,
+            equipment_id,
+            tank_id,
+            participant_id,
+            inventory_type,
+            notes
+          `)
+          .in("event_id", allEventIds);
+
+        // Fetch equipment details
+        const equipmentIds = allAssignments?.filter(a => a.equipment_id).map(a => a.equipment_id!) || [];
+        const tankIds = allAssignments?.filter(a => a.tank_id).map(a => a.tank_id!) || [];
+
+        let equipmentMap: Record<string, any> = {};
+        let tankMap: Record<string, any> = {};
+
+        if (equipmentIds.length > 0) {
+          const { data: equipmentData } = await supabase
+            .from("dive_equipment")
+            .select("id, equipment_type, size, status")
+            .in("id", equipmentIds);
+          equipmentData?.forEach(e => { equipmentMap[e.id] = e; });
+        }
+
+        if (tankIds.length > 0) {
+          const { data: tankData } = await supabase
+            .from("dive_tanks")
+            .select("id, tank_number, gas_type, status, pressure_bar")
+            .in("id", tankIds);
+          tankData?.forEach(t => { tankMap[t.id] = t; });
+        }
+
+        // Get participant names for context
+        const participantIds = allAssignments?.filter(a => a.participant_id).map(a => a.participant_id!) || [];
+        let participantMap: Record<string, string> = {};
+        if (participantIds.length > 0) {
+          const { data: participantData } = await supabase
+            .from("dive_trip_participants")
+            .select("id, participant_name")
+            .in("id", participantIds);
+          participantData?.forEach(p => { participantMap[p.id] = p.participant_name; });
+        }
+
+        // Create a map of event dates
+        const eventDateMap: Record<string, string> = {};
+        bookings?.forEach(b => { eventDateMap[b.id] = format(new Date(b.dive_date), "yyyy-MM-dd"); });
+        customEvents?.forEach(e => { eventDateMap[e.id] = format(new Date(e.start_time), "yyyy-MM-dd"); });
+
+        // Event name map
+        const eventNameMap: Record<string, string> = {};
+        bookings?.forEach(b => { eventNameMap[b.id] = b.group_name || "Dive trip"; });
+        customEvents?.forEach(e => { eventNameMap[e.id] = e.title; });
+
+        // Generate individual equipment check tasks
+        for (const assignment of allAssignments || []) {
+          const eventDate = eventDateMap[assignment.event_id];
+          const eventName = eventNameMap[assignment.event_id];
+          const participantName = assignment.participant_id ? participantMap[assignment.participant_id] : "Unassigned";
+
+          if (assignment.equipment_id && equipmentMap[assignment.equipment_id]) {
+            const eq = equipmentMap[assignment.equipment_id];
+            const taskKey = `${assignment.event_id}-equipment_item_check-${assignment.id}`;
+            
+            if (!existingTaskMap.has(taskKey)) {
+              newTasks.push({
+                dive_center_id: diveCenterId,
+                event_id: assignment.event_id,
+                task_type: "equipment_item_check",
+                title: `Check ${eq.equipment_type} ${eq.size || ""} - ${participantName}`,
+                description: `Pre-dive check for ${eq.equipment_type} ${eq.size || ""} assigned to ${participantName} for ${eventName}. Verify condition, fit, and functionality.`,
+                due_date: eventDate,
+                priority: 2,
+              });
+            }
+          }
+
+          if (assignment.tank_id && tankMap[assignment.tank_id]) {
+            const tank = tankMap[assignment.tank_id];
+            const taskKey = `${assignment.event_id}-tank_item_check-${assignment.id}`;
+            
+            if (!existingTaskMap.has(taskKey)) {
+              newTasks.push({
+                dive_center_id: diveCenterId,
+                event_id: assignment.event_id,
+                task_type: "tank_item_check",
+                title: `Check Tank ${tank.tank_number} - ${participantName}`,
+                description: `Pre-dive check for Tank ${tank.tank_number} (${tank.gas_type}, ${tank.pressure_bar || "N/A"} bar) assigned to ${participantName}. Verify pressure, valve, and O-ring.`,
+                due_date: eventDate,
+                priority: 2,
+              });
+            }
+          }
+        }
+      }
+
       if (newTasks.length > 0) {
         await supabase.from("booking_tasks").insert(newTasks);
       }
@@ -593,13 +703,16 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
         lastGeneratedRef.current = "";
         fetchTasks();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_inventory_assignments' }, () => {
+        // Regenerate tasks when equipment/tanks are assigned
+        lastGeneratedRef.current = "";
+        fetchTasks();
+        fetchAlerts();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dive_equipment', filter: `dive_center_id=eq.${diveCenterId}` }, () => {
         fetchAlerts();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dive_tanks', filter: `dive_center_id=eq.${diveCenterId}` }, () => {
-        fetchAlerts();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_inventory_assignments' }, () => {
         fetchAlerts();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_rental_requests' }, () => {
