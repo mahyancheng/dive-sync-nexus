@@ -136,8 +136,10 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
           equipmentCounts[key] = (equipmentCounts[key] || 0) + 1;
         });
 
-        // 2. Check upcoming bookings for equipment shortages
+        // 2. Check upcoming events (both bookings AND custom events) for equipment shortages
         const targetDate = selectedDate || new Date();
+        
+        // Check dive_bookings
         const { data: bookings } = await supabase
           .from("dive_bookings")
           .select("id, group_name, dive_date, participants_count")
@@ -145,66 +147,146 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
           .gte("dive_date", format(targetDate, "yyyy-MM-dd"))
           .lte("dive_date", format(addDays(targetDate, 7), "yyyy-MM-dd"));
 
-        if (bookings) {
-          for (const booking of bookings) {
-            // Check equipment assignments
-            const { data: assignments } = await supabase
-              .from("event_inventory_assignments")
-              .select("equipment_id, tank_id")
-              .eq("event_id", booking.id);
+        // Check custom_events (dive trips)
+        const { data: customEvents } = await supabase
+          .from("custom_events")
+          .select("id, title, start_time, event_group_id")
+          .eq("dive_center_id", diveCenterId)
+          .gte("start_time", format(targetDate, "yyyy-MM-dd"))
+          .lte("start_time", format(addDays(targetDate, 7), "yyyy-MM-dd"));
 
-            // Get participant equipment requests
-            const { data: participants } = await supabase
-              .from("dive_trip_participants")
-              .select("id")
-              .eq("event_id", booking.id);
+        // Process custom events for equipment alerts
+        const processedGroups = new Set<string>();
+        for (const event of customEvents || []) {
+          // Skip duplicates for multi-day trips
+          if (event.event_group_id && processedGroups.has(event.event_group_id)) continue;
+          if (event.event_group_id) processedGroups.add(event.event_group_id);
 
-            const { data: equipmentRequests } = await supabase
-              .from("equipment_rental_requests")
-              .select("*")
-              .in("participant_id", participants?.map(p => p.id) || []);
+          // Get participants for this event
+          const { data: participants } = await supabase
+            .from("dive_trip_participants")
+            .select("id")
+            .eq("event_id", event.id);
 
-            const assignedEquipmentCount = assignments?.filter(a => a.equipment_id).length || 0;
-            const assignedTankCount = assignments?.filter(a => a.tank_id).length || 0;
+          const participantCount = participants?.length || 0;
+          if (participantCount === 0) continue;
 
-            // Calculate needed equipment from participant requests
-            let neededBCD = 0, neededFins = 0, neededMask = 0, neededWetsuit = 0, neededRegulator = 0;
-            
-            equipmentRequests?.forEach(req => {
-              if (req.bcd_needed) neededBCD++;
-              if (req.fins_needed) neededFins++;
-              if (req.mask_needed) neededMask++;
-              if (req.wetsuit_needed) neededWetsuit++;
-              if (req.regulator_needed) neededRegulator++;
+          // Get equipment requests from participants
+          const { data: equipmentRequests } = await supabase
+            .from("equipment_rental_requests")
+            .select("*")
+            .in("participant_id", participants?.map(p => p.id) || []);
+
+          // Get assignments for this event
+          const { data: assignments } = await supabase
+            .from("event_inventory_assignments")
+            .select("equipment_id, tank_id")
+            .eq("event_id", event.id);
+
+          const assignedEquipmentCount = assignments?.filter(a => a.equipment_id).length || 0;
+          const assignedTankCount = assignments?.filter(a => a.tank_id).length || 0;
+
+          // Calculate needed equipment
+          let totalNeeded = 0;
+          const neededByType: Record<string, number> = {};
+          
+          equipmentRequests?.forEach(req => {
+            if (req.bcd_needed) { totalNeeded++; neededByType['BCD'] = (neededByType['BCD'] || 0) + 1; }
+            if (req.fins_needed) { totalNeeded++; neededByType['Fins'] = (neededByType['Fins'] || 0) + 1; }
+            if (req.mask_needed) { totalNeeded++; neededByType['Mask'] = (neededByType['Mask'] || 0) + 1; }
+            if (req.wetsuit_needed) { totalNeeded++; neededByType['Wetsuit'] = (neededByType['Wetsuit'] || 0) + 1; }
+            if (req.regulator_needed) { totalNeeded++; neededByType['Regulator'] = (neededByType['Regulator'] || 0) + 1; }
+          });
+
+          if (totalNeeded > 0 && assignedEquipmentCount < totalNeeded) {
+            const shortage = totalNeeded - assignedEquipmentCount;
+            const neededList = Object.entries(neededByType).map(([type, count]) => `${count}x ${type}`).join(", ");
+            newAlerts.push({
+              id: `shortage-event-${event.id}`,
+              type: "shortage",
+              title: `Equipment shortage: ${event.title}`,
+              description: `${shortage} items unassigned (${assignedEquipmentCount}/${totalNeeded}). Needed: ${neededList}`,
+              priority: "high",
+              relatedId: event.id,
+              dueDate: event.start_time,
             });
+          }
 
-            const totalNeeded = neededBCD + neededFins + neededMask + neededWetsuit + neededRegulator;
+          // Check tanks
+          if (participantCount > 0 && assignedTankCount === 0) {
+            newAlerts.push({
+              id: `tanks-event-${event.id}`,
+              type: "unassigned",
+              title: `No tanks assigned: ${event.title}`,
+              description: `${participantCount} divers need tanks for ${format(new Date(event.start_time), "MMM d")}`,
+              priority: "high",
+              relatedId: event.id,
+              dueDate: event.start_time,
+            });
+          } else if (participantCount > assignedTankCount && assignedTankCount > 0) {
+            newAlerts.push({
+              id: `tanks-partial-${event.id}`,
+              type: "shortage",
+              title: `Insufficient tanks: ${event.title}`,
+              description: `Only ${assignedTankCount}/${participantCount} tanks assigned`,
+              priority: "high",
+              relatedId: event.id,
+              dueDate: event.start_time,
+            });
+          }
+        }
 
-            if (totalNeeded > 0 && assignedEquipmentCount < totalNeeded) {
-              const shortage = totalNeeded - assignedEquipmentCount;
-              newAlerts.push({
-                id: `shortage-${booking.id}`,
-                type: "shortage",
-                title: `Equipment shortage: ${booking.group_name || "Dive trip"}`,
-                description: `${shortage} equipment items still need assignment (${assignedEquipmentCount}/${totalNeeded} assigned)`,
-                priority: "high",
-                relatedId: booking.id,
-                dueDate: booking.dive_date,
-              });
-            }
+        // Process dive_bookings similarly
+        for (const booking of bookings || []) {
+          const { data: assignments } = await supabase
+            .from("event_inventory_assignments")
+            .select("equipment_id, tank_id")
+            .eq("event_id", booking.id);
 
-            // Check if booking needs tanks but none assigned
-            if (booking.participants_count > 0 && assignedTankCount === 0) {
-              newAlerts.push({
-                id: `tanks-${booking.id}`,
-                type: "unassigned",
-                title: `No tanks assigned: ${booking.group_name || "Dive trip"}`,
-                description: `${booking.participants_count} divers need tanks for ${format(new Date(booking.dive_date), "MMM d")}`,
-                priority: "high",
-                relatedId: booking.id,
-                dueDate: booking.dive_date,
-              });
-            }
+          const { data: participants } = await supabase
+            .from("dive_trip_participants")
+            .select("id")
+            .eq("event_id", booking.id);
+
+          const { data: equipmentRequests } = await supabase
+            .from("equipment_rental_requests")
+            .select("*")
+            .in("participant_id", participants?.map(p => p.id) || []);
+
+          const assignedEquipmentCount = assignments?.filter(a => a.equipment_id).length || 0;
+          const assignedTankCount = assignments?.filter(a => a.tank_id).length || 0;
+
+          let totalNeeded = 0;
+          equipmentRequests?.forEach(req => {
+            if (req.bcd_needed) totalNeeded++;
+            if (req.fins_needed) totalNeeded++;
+            if (req.mask_needed) totalNeeded++;
+            if (req.wetsuit_needed) totalNeeded++;
+            if (req.regulator_needed) totalNeeded++;
+          });
+
+          if (totalNeeded > 0 && assignedEquipmentCount < totalNeeded) {
+            newAlerts.push({
+              id: `shortage-${booking.id}`,
+              type: "shortage",
+              title: `Equipment shortage: ${booking.group_name || "Dive trip"}`,
+              description: `${totalNeeded - assignedEquipmentCount} items unassigned (${assignedEquipmentCount}/${totalNeeded})`,
+              priority: "high",
+              relatedId: booking.id,
+              dueDate: booking.dive_date,
+            });
+          }
+
+          if (booking.participants_count > 0 && assignedTankCount === 0) {
+            newAlerts.push({
+              id: `tanks-${booking.id}`,
+              type: "unassigned",
+              title: `No tanks assigned: ${booking.group_name || "Dive trip"}`,
+              description: `${booking.participants_count} divers need tanks`,
+              priority: "high",
+              relatedId: booking.id,
+              dueDate: booking.dive_date,
+            });
           }
         }
       }
@@ -301,7 +383,7 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
     }
   }, [diveCenterId, selectedDate]);
 
-  // Auto-generate tasks from bookings
+  // Auto-generate tasks from bookings AND custom events
   const autoGenerateTasks = useCallback(async () => {
     const cacheKey = `${diveCenterId}-${selectedDate?.toISOString() || "now"}`;
     if (generatingRef.current || lastGeneratedRef.current === cacheKey) return;
@@ -319,6 +401,14 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
         .eq("dive_center_id", diveCenterId)
         .gte("dive_date", startDate)
         .lte("dive_date", endDate);
+
+      // Get custom events (dive trips, etc.)
+      const { data: customEvents } = await supabase
+        .from("custom_events")
+        .select("id, title, start_time, end_time, category, dive_type, event_group_id")
+        .eq("dive_center_id", diveCenterId)
+        .gte("start_time", startDate)
+        .lte("start_time", endDate);
 
       // Get maintenance logs for scheduled maintenance
       const { data: maintenanceLogs } = await supabase
@@ -362,6 +452,55 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
             newTasks.push({
               dive_center_id: diveCenterId,
               booking_id: booking.id,
+              task_type: template.type,
+              title: template.title,
+              description: template.desc,
+              due_date: template.date,
+              priority: template.priority,
+            });
+          }
+        }
+      }
+
+      // Generate tasks from custom events (dive trips)
+      // Group events by event_group_id to avoid duplicate tasks for multi-day trips
+      const processedGroups = new Set<string>();
+      
+      for (const event of customEvents || []) {
+        // Skip if this is part of a multi-day trip and we already processed it
+        if (event.event_group_id && processedGroups.has(event.event_group_id)) {
+          continue;
+        }
+        if (event.event_group_id) {
+          processedGroups.add(event.event_group_id);
+        }
+
+        // Get participant count for this event
+        const { data: participants } = await supabase
+          .from("dive_trip_participants")
+          .select("id")
+          .eq("event_id", event.id);
+
+        const participantCount = participants?.length || 0;
+        const eventDate = new Date(event.start_time);
+        const prepDate = format(addDays(eventDate, -1), "yyyy-MM-dd");
+        const dayOfDate = format(eventDate, "yyyy-MM-dd");
+
+        const taskTemplates = [
+          { type: "equipment_prep", title: `Prepare equipment: ${event.title}`, desc: `Check and prepare ${participantCount} sets of equipment`, date: prepDate, priority: 2 },
+          { type: "tank_fill", title: `Fill tanks: ${event.title}`, desc: `Ensure tanks are filled for ${participantCount} divers`, date: prepDate, priority: 3 },
+          { type: "participant_check", title: `Verify participants: ${event.title}`, desc: `Confirm ${participantCount} participants registered`, date: prepDate, priority: 2 },
+          { type: "boat_prep", title: `Prepare boat: ${event.title}`, desc: `Load equipment and supplies`, date: dayOfDate, priority: 3 },
+          { type: "equipment_check", title: `Equipment check: ${event.title}`, desc: `Verify all assigned equipment for ${participantCount} divers`, date: dayOfDate, priority: 3 },
+          { type: "briefing", title: `Briefing: ${event.title}`, desc: `Safety briefing for ${participantCount} participants`, date: dayOfDate, priority: 2 },
+          { type: "checkout", title: `Checkout: ${event.title}`, desc: `Verify equipment return and complete paperwork`, date: dayOfDate, priority: 1 },
+        ];
+
+        for (const template of taskTemplates) {
+          if (!existingTaskMap.has(`${event.id}-${template.type}`)) {
+            newTasks.push({
+              dive_center_id: diveCenterId,
+              event_id: event.id,
               task_type: template.type,
               title: template.title,
               description: template.desc,
@@ -446,6 +585,14 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
         lastGeneratedRef.current = "";
         fetchTasks();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'custom_events', filter: `dive_center_id=eq.${diveCenterId}` }, () => {
+        lastGeneratedRef.current = "";
+        fetchTasks();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dive_trip_participants' }, () => {
+        lastGeneratedRef.current = "";
+        fetchTasks();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dive_equipment', filter: `dive_center_id=eq.${diveCenterId}` }, () => {
         fetchAlerts();
       })
@@ -453,6 +600,9 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
         fetchAlerts();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_inventory_assignments' }, () => {
+        fetchAlerts();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_rental_requests' }, () => {
         fetchAlerts();
       })
       .subscribe();
