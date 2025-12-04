@@ -67,11 +67,11 @@ export const InventoryAssignment = ({
   }, [eventId]);
 
   useEffect(() => {
-    if (diveCenterId) {
+    if (diveCenterId && eventDate) {
       fetchAssignments();
       fetchInventoryItems();
     }
-  }, [eventId, inventoryType, diveCenterId]);
+  }, [eventId, inventoryType, diveCenterId, eventDate]);
 
   const fetchDiveCenterAndDate = async () => {
     try {
@@ -122,22 +122,43 @@ export const InventoryAssignment = ({
   };
 
   const fetchInventoryItems = async () => {
-    if (!diveCenterId) return;
+    if (!diveCenterId || !eventDate) return;
     
     try {
-      // Get items assigned to other events (not in our trip group)
+      // Get the date of this event (just the date part, no time)
+      const eventDateOnly = eventDate.split('T')[0];
+      
+      // Get all events on the same date to find conflicting assignments
+      const { data: customEventsOnDate } = await supabase
+        .from("custom_events")
+        .select("id, start_time")
+        .eq("dive_center_id", diveCenterId)
+        .gte("start_time", `${eventDateOnly}T00:00:00`)
+        .lt("start_time", `${eventDateOnly}T23:59:59`);
+      
+      const { data: bookingsOnDate } = await supabase
+        .from("dive_bookings")
+        .select("id, dive_date")
+        .eq("dive_center_id", diveCenterId)
+        .gte("dive_date", `${eventDateOnly}T00:00:00`)
+        .lt("dive_date", `${eventDateOnly}T23:59:59`);
+      
+      // Combine event IDs from same date (excluding our trip group)
+      const sameDayEventIds = [
+        ...(customEventsOnDate || []).map(e => e.id),
+        ...(bookingsOnDate || []).map(b => b.id)
+      ].filter(id => !effectiveEventIds.includes(id));
+      
+      // Get items assigned to OTHER events on the SAME day
       let assignedItemIds: string[] = [];
-      if (eventDate) {
-        // Get assignments from events NOT in our trip group
-        const { data: otherAssignments } = await supabase
+      if (sameDayEventIds.length > 0) {
+        const { data: conflictingAssignments } = await supabase
           .from("event_inventory_assignments")
-          .select("tank_id, boat_id, equipment_id, event_id");
+          .select("tank_id, boat_id, equipment_id")
+          .in("event_id", sameDayEventIds);
         
-        if (otherAssignments) {
-          otherAssignments.forEach(e => {
-            // Skip items assigned to events in our trip group
-            if (effectiveEventIds.includes(e.event_id)) return;
-            
+        if (conflictingAssignments) {
+          conflictingAssignments.forEach(e => {
             if (inventoryType === "tank" && e.tank_id) assignedItemIds.push(e.tank_id);
             if (inventoryType === "boat" && e.boat_id) assignedItemIds.push(e.boat_id);
             if (inventoryType === "equipment" && e.equipment_id) assignedItemIds.push(e.equipment_id);
@@ -147,7 +168,7 @@ export const InventoryAssignment = ({
 
       let query;
       if (inventoryType === "tank") {
-        query = supabase.from("dive_tanks").select("id, tank_number, status").eq("dive_center_id", diveCenterId);
+        query = supabase.from("dive_tanks").select("id, tank_number, status, gas_type").eq("dive_center_id", diveCenterId);
       } else if (inventoryType === "boat") {
         query = supabase.from("boats").select("id, name, status, max_capacity").eq("dive_center_id", diveCenterId);
       } else {
@@ -161,22 +182,25 @@ export const InventoryAssignment = ({
         const code = item.id.slice(0, 8).toUpperCase();
         let displayName = "";
         if (inventoryType === "tank") {
-          displayName = `#${item.tank_number || code}`;
+          displayName = `#${item.tank_number || code}${item.gas_type && item.gas_type !== 'Air' ? ` (${item.gas_type})` : ''}`;
         } else if (inventoryType === "boat") {
           displayName = `${item.name} (Cap: ${item.max_capacity || '?'})`;
         } else {
           displayName = `#${code} - ${item.equipment_type}${item.size ? ` (${item.size})` : ''}`;
         }
         
-        // Mark as unavailable if assigned to another event
+        // Mark as unavailable only if assigned to another event on the SAME day
         const isAssignedElsewhere = assignedItemIds.includes(item.id);
+        // Also consider item's own status (maintenance, disposed, etc.)
+        const baseStatus = item.status || "available";
+        const effectiveStatus = isAssignedElsewhere ? "assigned_elsewhere" : baseStatus;
         
         return {
           ...item,
           name: displayName,
           code,
           max_capacity: item.max_capacity,
-          status: isAssignedElsewhere ? "assigned_elsewhere" : (item.status || "available")
+          status: effectiveStatus
         };
       }) || [];
       
