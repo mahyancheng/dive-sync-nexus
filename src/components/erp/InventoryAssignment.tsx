@@ -33,6 +33,7 @@ interface InventoryItem {
   equipment_type?: string;
   size?: string;
   status: string;
+  originalStatus?: string; // Original status for display (e.g., "full", "empty" for tanks)
   code: string;
   max_capacity?: number;
 }
@@ -54,6 +55,15 @@ export const InventoryAssignment = ({
   tanksPerPerson = 2,
   onAssignmentChange,
 }: InventoryAssignmentProps) => {
+  // Helper to check if an item is available based on inventory type
+  const isItemAvailable = (status: string) => {
+    if (inventoryType === "tank") {
+      // Tanks use "full", "empty" as available states (not "in_use", "maintenance", "disposed")
+      return status === "full" || status === "empty";
+    }
+    // Boats and equipment use "available"
+    return status === "available";
+  };
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -193,13 +203,24 @@ export const InventoryAssignment = ({
         const isAssignedElsewhere = assignedItemIds.includes(item.id);
         // Also consider item's own status (maintenance, disposed, etc.)
         const baseStatus = item.status || "available";
-        const effectiveStatus = isAssignedElsewhere ? "assigned_elsewhere" : baseStatus;
+        
+        // Normalize status for display and filtering
+        let effectiveStatus: string;
+        if (isAssignedElsewhere) {
+          effectiveStatus = "assigned_elsewhere";
+        } else if (inventoryType === "tank") {
+          // Normalize tank status: full/empty = available for assignment
+          effectiveStatus = (baseStatus === "full" || baseStatus === "empty") ? "available" : baseStatus;
+        } else {
+          effectiveStatus = baseStatus;
+        }
         
         return {
           ...item,
           name: displayName,
           code,
           max_capacity: item.max_capacity,
+          originalStatus: baseStatus, // Keep original for display
           status: effectiveStatus
         };
       }) || [];
@@ -627,7 +648,14 @@ export const InventoryAssignment = ({
                             value={item.id} 
                             disabled={item.status !== "available" && itemId !== item.id}
                           >
-                            {item.name} {item.status === "assigned_elsewhere" ? "(In Use)" : item.status !== "available" && itemId !== item.id ? `(${item.status})` : ""}
+                            {item.name} 
+                            {item.status === "assigned_elsewhere" 
+                              ? "(In Use)" 
+                              : item.status !== "available" && itemId !== item.id 
+                                ? `(${item.status})` 
+                                : item.originalStatus && item.originalStatus !== "available"
+                                  ? `(${item.originalStatus})`
+                                  : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
