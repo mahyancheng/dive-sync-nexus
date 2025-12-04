@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, isToday, isTomorrow, addDays, isBefore, startOfDay } from "date-fns";
-import { CheckCircle2, Circle, AlertTriangle, Package, Anchor, Users, ClipboardList, Plus, RefreshCw } from "lucide-react";
+import { CheckCircle2, Circle, AlertTriangle, Package, Anchor, Users, ClipboardList, RefreshCw, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 interface Task {
@@ -38,26 +37,106 @@ interface TodoListProps {
   onRefresh?: () => void;
 }
 
-const TASK_TYPES = {
+const TASK_TYPES: Record<string, { label: string; icon: typeof Package; color: string }> = {
   equipment_prep: { label: "Equipment Prep", icon: Package, color: "bg-blue-500" },
   tank_fill: { label: "Tank Fill", icon: Anchor, color: "bg-cyan-500" },
   boat_prep: { label: "Boat Prep", icon: Anchor, color: "bg-indigo-500" },
   briefing: { label: "Briefing", icon: Users, color: "bg-green-500" },
   checkout: { label: "Checkout", icon: ClipboardList, color: "bg-orange-500" },
+  equipment_check: { label: "Equipment Check", icon: Wrench, color: "bg-amber-500" },
+  participant_check: { label: "Participant Check", icon: Users, color: "bg-teal-500" },
   custom: { label: "Custom", icon: Circle, color: "bg-gray-500" },
 };
 
 export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onRefresh }: TodoListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const generatingRef = useRef(false);
+  const lastGeneratedRef = useRef<string>("");
 
-  useEffect(() => {
-    fetchTasks();
+  // Auto-generate tasks from bookings
+  const autoGenerateTasks = useCallback(async () => {
+    const cacheKey = `${diveCenterId}-${selectedDate?.toISOString() || "now"}`;
+    if (generatingRef.current || lastGeneratedRef.current === cacheKey) return;
+    generatingRef.current = true;
+
+    try {
+      const targetDate = selectedDate || new Date();
+      const startDate = format(startOfDay(targetDate), "yyyy-MM-dd'T'HH:mm:ss");
+      const endDate = format(addDays(targetDate, 14), "yyyy-MM-dd'T'HH:mm:ss");
+
+      // Get upcoming bookings
+      const { data: bookings } = await supabase
+        .from("dive_bookings")
+        .select("id, group_name, dive_date, location, participants_count")
+        .eq("dive_center_id", diveCenterId)
+        .gte("dive_date", startDate)
+        .lte("dive_date", endDate);
+
+      if (!bookings || bookings.length === 0) {
+        lastGeneratedRef.current = cacheKey;
+        return;
+      }
+
+      // Get existing tasks to avoid duplicates
+      const { data: existingTasks } = await supabase
+        .from("booking_tasks")
+        .select("booking_id, task_type")
+        .eq("dive_center_id", diveCenterId);
+
+      const existingTaskMap = new Set(
+        existingTasks?.map(t => `${t.booking_id}-${t.task_type}`) || []
+      );
+
+      const newTasks: any[] = [];
+
+      for (const booking of bookings) {
+        const diveDate = new Date(booking.dive_date);
+        const prepDate = format(addDays(diveDate, -1), "yyyy-MM-dd");
+        const dayOfDate = format(diveDate, "yyyy-MM-dd");
+
+        const taskTemplates = [
+          { type: "equipment_prep", title: `Prepare equipment for ${booking.group_name || "dive trip"}`, desc: `Check and prepare ${booking.participants_count} sets of equipment`, date: prepDate, priority: 2 },
+          { type: "tank_fill", title: `Fill tanks for ${booking.group_name || "dive trip"}`, desc: `Ensure tanks are filled for ${booking.participants_count} divers`, date: prepDate, priority: 3 },
+          { type: "participant_check", title: `Verify participants for ${booking.group_name || "dive trip"}`, desc: `Confirm ${booking.participants_count} participants registered`, date: prepDate, priority: 2 },
+          { type: "boat_prep", title: `Prepare boat for ${booking.group_name || "dive trip"}`, desc: `Load equipment for ${booking.location || "dive site"}`, date: dayOfDate, priority: 3 },
+          { type: "equipment_check", title: `Equipment check: ${booking.group_name || "dive trip"}`, desc: `Verify all assigned equipment for ${booking.participants_count} divers`, date: dayOfDate, priority: 3 },
+          { type: "briefing", title: `Briefing: ${booking.group_name || "dive trip"}`, desc: `Safety briefing for ${booking.participants_count} participants`, date: dayOfDate, priority: 2 },
+          { type: "checkout", title: `Checkout: ${booking.group_name || "dive trip"}`, desc: `Verify equipment return and complete paperwork`, date: dayOfDate, priority: 1 },
+        ];
+
+        for (const template of taskTemplates) {
+          if (!existingTaskMap.has(`${booking.id}-${template.type}`)) {
+            newTasks.push({
+              dive_center_id: diveCenterId,
+              booking_id: booking.id,
+              task_type: template.type,
+              title: template.title,
+              description: template.desc,
+              due_date: template.date,
+              priority: template.priority,
+            });
+          }
+        }
+      }
+
+      if (newTasks.length > 0) {
+        await supabase.from("booking_tasks").insert(newTasks);
+      }
+      lastGeneratedRef.current = cacheKey;
+    } catch (error) {
+      console.error("Error auto-generating tasks:", error);
+    } finally {
+      generatingRef.current = false;
+    }
   }, [diveCenterId, selectedDate]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
     try {
+      // First auto-generate any missing tasks
+      await autoGenerateTasks();
+
       const targetDate = selectedDate || new Date();
       const startDate = format(startOfDay(targetDate), "yyyy-MM-dd");
       const endDate = format(addDays(targetDate, operatorMode ? 0 : 7), "yyyy-MM-dd");
@@ -84,7 +163,36 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
     } finally {
       setLoading(false);
     }
-  };
+  }, [diveCenterId, selectedDate, operatorMode, autoGenerateTasks]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  // Subscribe to booking changes to auto-refresh tasks
+  useEffect(() => {
+    const channel = supabase
+      .channel('booking-tasks-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dive_bookings',
+          filter: `dive_center_id=eq.${diveCenterId}`
+        },
+        () => {
+          // Reset cache and refetch when bookings change
+          lastGeneratedRef.current = "";
+          fetchTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [diveCenterId, fetchTasks]);
 
   const toggleTask = async (taskId: string, completed: boolean) => {
     try {
@@ -112,122 +220,6 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
     } catch (error) {
       console.error("Error updating task:", error);
       toast.error("Failed to update task");
-    }
-  };
-
-  const generateTasksForBookings = async () => {
-    setGenerating(true);
-    try {
-      // Get upcoming bookings without tasks
-      const targetDate = selectedDate || new Date();
-      const startDate = format(startOfDay(targetDate), "yyyy-MM-dd'T'HH:mm:ss");
-      const endDate = format(addDays(targetDate, 7), "yyyy-MM-dd'T'HH:mm:ss");
-
-      const { data: bookings, error: bookingsError } = await supabase
-        .from("dive_bookings")
-        .select("id, group_name, dive_date, location, participants_count")
-        .eq("dive_center_id", diveCenterId)
-        .gte("dive_date", startDate)
-        .lte("dive_date", endDate);
-
-      if (bookingsError) throw bookingsError;
-
-      // Get existing tasks to avoid duplicates
-      const { data: existingTasks } = await supabase
-        .from("booking_tasks")
-        .select("booking_id, task_type")
-        .eq("dive_center_id", diveCenterId);
-
-      const existingTaskMap = new Set(
-        existingTasks?.map(t => `${t.booking_id}-${t.task_type}`) || []
-      );
-
-      const newTasks: any[] = [];
-
-      for (const booking of bookings || []) {
-        const diveDate = new Date(booking.dive_date);
-        const prepDate = format(addDays(diveDate, -1), "yyyy-MM-dd");
-        const dayOfDate = format(diveDate, "yyyy-MM-dd");
-
-        // Equipment prep task (day before)
-        if (!existingTaskMap.has(`${booking.id}-equipment_prep`)) {
-          newTasks.push({
-            dive_center_id: diveCenterId,
-            booking_id: booking.id,
-            task_type: "equipment_prep",
-            title: `Prepare equipment for ${booking.group_name || "dive trip"}`,
-            description: `Check and prepare ${booking.participants_count} sets of equipment`,
-            due_date: prepDate,
-            priority: 2,
-          });
-        }
-
-        // Tank fill task (day before)
-        if (!existingTaskMap.has(`${booking.id}-tank_fill`)) {
-          newTasks.push({
-            dive_center_id: diveCenterId,
-            booking_id: booking.id,
-            task_type: "tank_fill",
-            title: `Fill tanks for ${booking.group_name || "dive trip"}`,
-            description: `Ensure tanks are filled for ${booking.participants_count} divers`,
-            due_date: prepDate,
-            priority: 3,
-          });
-        }
-
-        // Boat prep task (day of)
-        if (!existingTaskMap.has(`${booking.id}-boat_prep`)) {
-          newTasks.push({
-            dive_center_id: diveCenterId,
-            booking_id: booking.id,
-            task_type: "boat_prep",
-            title: `Prepare boat for ${booking.group_name || "dive trip"}`,
-            description: `Load equipment and supplies for trip to ${booking.location || "dive site"}`,
-            due_date: dayOfDate,
-            priority: 3,
-          });
-        }
-
-        // Briefing task (day of)
-        if (!existingTaskMap.has(`${booking.id}-briefing`)) {
-          newTasks.push({
-            dive_center_id: diveCenterId,
-            booking_id: booking.id,
-            task_type: "briefing",
-            title: `Conduct briefing for ${booking.group_name || "dive trip"}`,
-            description: `Safety briefing and dive plan for ${booking.participants_count} participants`,
-            due_date: dayOfDate,
-            priority: 2,
-          });
-        }
-
-        // Checkout task (day of)
-        if (!existingTaskMap.has(`${booking.id}-checkout`)) {
-          newTasks.push({
-            dive_center_id: diveCenterId,
-            booking_id: booking.id,
-            task_type: "checkout",
-            title: `Checkout: ${booking.group_name || "dive trip"}`,
-            description: `Verify equipment return and complete paperwork`,
-            due_date: dayOfDate,
-            priority: 1,
-          });
-        }
-      }
-
-      if (newTasks.length > 0) {
-        const { error } = await supabase.from("booking_tasks").insert(newTasks);
-        if (error) throw error;
-        toast.success(`Generated ${newTasks.length} new tasks`);
-        fetchTasks();
-      } else {
-        toast.info("No new tasks to generate");
-      }
-    } catch (error) {
-      console.error("Error generating tasks:", error);
-      toast.error("Failed to generate tasks");
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -264,8 +256,9 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center gap-2">
             <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Loading tasks...</span>
           </div>
         </CardContent>
       </Card>
@@ -280,21 +273,6 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
             <ClipboardList className="h-5 w-5" />
             {operatorMode ? "Today's Operations" : "Task Checklist"}
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={generateTasksForBookings}
-              disabled={generating}
-            >
-              {generating ? (
-                <RefreshCw className="h-4 w-4 animate-spin mr-1" />
-              ) : (
-                <Plus className="h-4 w-4 mr-1" />
-              )}
-              Generate Tasks
-            </Button>
-          </div>
         </div>
         <div className="flex gap-4 text-sm text-muted-foreground mt-2">
           <span className="flex items-center gap-1">
@@ -319,7 +297,7 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
             <div className="text-center py-8 text-muted-foreground">
               <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>No tasks scheduled</p>
-              <p className="text-sm">Click "Generate Tasks" to create tasks from bookings</p>
+              <p className="text-sm">Tasks will appear automatically when bookings are created</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -330,8 +308,9 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
                   </h4>
                   <div className="space-y-2">
                     {dateTasks.map(task => {
-                      const TaskIcon = TASK_TYPES[task.task_type as keyof typeof TASK_TYPES]?.icon || Circle;
-                      const taskColor = TASK_TYPES[task.task_type as keyof typeof TASK_TYPES]?.color || "bg-gray-500";
+                      const taskTypeInfo = TASK_TYPES[task.task_type] || TASK_TYPES.custom;
+                      const TaskIcon = taskTypeInfo.icon;
+                      const taskColor = taskTypeInfo.color;
 
                       return (
                         <div
@@ -354,13 +333,13 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
                               <div className={`p-1 rounded ${taskColor}`}>
                                 <TaskIcon className="h-3 w-3 text-white" />
                               </div>
-                              <span className={`font-medium ${task.completed ? "line-through" : ""}`}>
+                              <span className={`font-medium text-sm ${task.completed ? "line-through" : ""}`}>
                                 {task.title}
                               </span>
                               {getPriorityBadge(task.priority)}
                             </div>
                             {task.description && (
-                              <p className="text-sm text-muted-foreground truncate">
+                              <p className="text-xs text-muted-foreground truncate">
                                 {task.description}
                               </p>
                             )}
