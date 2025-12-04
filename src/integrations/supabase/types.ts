@@ -52,6 +52,86 @@ export type Database = {
           },
         ]
       }
+      booking_tasks: {
+        Row: {
+          booking_id: string | null
+          completed: boolean
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          dive_center_id: string
+          due_date: string
+          event_id: string | null
+          id: string
+          priority: number
+          task_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          dive_center_id: string
+          due_date: string
+          event_id?: string | null
+          id?: string
+          priority?: number
+          task_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          dive_center_id?: string
+          due_date?: string
+          event_id?: string | null
+          id?: string
+          priority?: number
+          task_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_tasks_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "dive_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_tasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_tasks_dive_center_id_fkey"
+            columns: ["dive_center_id"]
+            isOneToOne: false
+            referencedRelation: "dive_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_tasks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "custom_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compressors: {
         Row: {
           created_at: string

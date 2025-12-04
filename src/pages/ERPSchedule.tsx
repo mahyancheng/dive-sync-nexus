@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft } from "lucide-react";
+import { Calendar, ArrowLeft, ClipboardCheck, LayoutGrid } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
 import { EventManager, type Event as EventManagerEvent } from "@/components/ui/event-manager";
 import { EventDetailDialog } from "@/components/erp/EventDetailDialog";
+import { TodoList } from "@/components/erp/TodoList";
 
 interface DBEvent {
   id: string;
@@ -28,6 +31,8 @@ const ERPSchedule = () => {
   const [diveCenterId, setDiveCenterId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [operatorMode, setOperatorMode] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   useEffect(() => {
     checkAccessAndFetch();
@@ -446,46 +451,95 @@ const ERPSchedule = () => {
       
       <main className="container mx-auto px-4 pt-20 pb-24">
         <div className="flex flex-col gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/erp")}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <Calendar className="w-8 h-8 text-primary" />
-                Calendar Management
-              </h1>
-              <p className="text-sm text-muted-foreground">View and manage all scheduled events</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/erp")}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  {operatorMode ? (
+                    <ClipboardCheck className="w-8 h-8 text-primary" />
+                  ) : (
+                    <Calendar className="w-8 h-8 text-primary" />
+                  )}
+                  {operatorMode ? "Operator Mode" : "Calendar Management"}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {operatorMode 
+                    ? "Day-of operations checklist and task tracking" 
+                    : "View and manage all scheduled events"}
+                </p>
+              </div>
+            </div>
+            
+            {/* Operator Mode Toggle */}
+            <div className="flex items-center gap-3 bg-card border rounded-lg px-4 py-2">
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="operator-mode" className="text-sm font-medium cursor-pointer">
+                Operator Mode
+              </Label>
+              <Switch
+                id="operator-mode"
+                checked={operatorMode}
+                onCheckedChange={setOperatorMode}
+              />
             </div>
           </div>
         </div>
 
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">
-            Loading calendar...
+            Loading...
+          </div>
+        ) : operatorMode ? (
+          /* Operator Mode View - Full-width todo list */
+          <div className="space-y-6">
+            {diveCenterId && (
+              <TodoList 
+                diveCenterId={diveCenterId} 
+                operatorMode={true}
+                selectedDate={selectedDate}
+              />
+            )}
           </div>
         ) : (
-          <EventManager
-            events={events}
-            onEventCreate={handleEventCreate}
-            onEventUpdate={handleEventUpdate}
-            onEventDelete={handleEventDelete}
-            onEventReorder={handleEventReorder}
-            onEventClick={(eventId) => {
-              // Only open detail dialog for custom events and bookings
-              if (eventId.startsWith('custom-') || eventId.startsWith('booking-')) {
-                setSelectedEventId(eventId);
-                setDetailDialogOpen(true);
-              } else {
-                toast.info("Maintenance events don't have detailed management");
-              }
-            }}
-            defaultView="month"
-          />
+          /* Calendar Mode View */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <EventManager
+                events={events}
+                onEventCreate={handleEventCreate}
+                onEventUpdate={handleEventUpdate}
+                onEventDelete={handleEventDelete}
+                onEventReorder={handleEventReorder}
+                onEventClick={(eventId) => {
+                  if (eventId.startsWith('custom-') || eventId.startsWith('booking-')) {
+                    setSelectedEventId(eventId);
+                    setDetailDialogOpen(true);
+                  } else {
+                    toast.info("Maintenance events don't have detailed management");
+                  }
+                }}
+                defaultView="month"
+              />
+            </div>
+            
+            {/* Sidebar with Todo List */}
+            <div className="lg:col-span-1">
+              {diveCenterId && (
+                <TodoList 
+                  diveCenterId={diveCenterId}
+                  selectedDate={selectedDate}
+                  onRefresh={fetchEvents}
+                />
+              )}
+            </div>
+          </div>
         )}
 
         <EventDetailDialog
