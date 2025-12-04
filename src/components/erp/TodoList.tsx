@@ -4,8 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, isToday, isTomorrow, addDays, isBefore, startOfDay } from "date-fns";
-import { CheckCircle2, Circle, AlertTriangle, Package, Anchor, Users, ClipboardList, RefreshCw, Wrench } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, isToday, isTomorrow, addDays, isBefore, startOfDay, differenceInDays } from "date-fns";
+import { 
+  CheckCircle2, Circle, AlertTriangle, Package, Anchor, Users, 
+  ClipboardList, RefreshCw, Wrench, AlertCircle, Gauge, Ship
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface Task {
@@ -30,6 +34,16 @@ interface Task {
   };
 }
 
+interface Alert {
+  id: string;
+  type: "maintenance" | "unassigned" | "shortage" | "tank_service";
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "low";
+  relatedId?: string;
+  dueDate?: string;
+}
+
 interface TodoListProps {
   diveCenterId: string;
   operatorMode?: boolean;
@@ -40,19 +54,252 @@ interface TodoListProps {
 const TASK_TYPES: Record<string, { label: string; icon: typeof Package; color: string }> = {
   equipment_prep: { label: "Equipment Prep", icon: Package, color: "bg-blue-500" },
   tank_fill: { label: "Tank Fill", icon: Anchor, color: "bg-cyan-500" },
-  boat_prep: { label: "Boat Prep", icon: Anchor, color: "bg-indigo-500" },
+  boat_prep: { label: "Boat Prep", icon: Ship, color: "bg-indigo-500" },
   briefing: { label: "Briefing", icon: Users, color: "bg-green-500" },
   checkout: { label: "Checkout", icon: ClipboardList, color: "bg-orange-500" },
   equipment_check: { label: "Equipment Check", icon: Wrench, color: "bg-amber-500" },
   participant_check: { label: "Participant Check", icon: Users, color: "bg-teal-500" },
+  maintenance: { label: "Maintenance", icon: Wrench, color: "bg-red-500" },
+  tank_service: { label: "Tank Service", icon: Gauge, color: "bg-purple-500" },
   custom: { label: "Custom", icon: Circle, color: "bg-gray-500" },
 };
 
 export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onRefresh }: TodoListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("tasks");
   const generatingRef = useRef(false);
   const lastGeneratedRef = useRef<string>("");
+
+  // Fetch equipment and inventory alerts
+  const fetchAlerts = useCallback(async () => {
+    const newAlerts: Alert[] = [];
+
+    try {
+      // 1. Equipment needing maintenance (overdue or upcoming)
+      const { data: equipment } = await supabase
+        .from("dive_equipment")
+        .select("id, equipment_type, size, status, next_service_date, last_service_date")
+        .eq("dive_center_id", diveCenterId);
+
+      if (equipment) {
+        const today = new Date();
+        
+        equipment.forEach(eq => {
+          // Maintenance status check
+          if (eq.status === "maintenance") {
+            newAlerts.push({
+              id: `eq-maint-${eq.id}`,
+              type: "maintenance",
+              title: `${eq.equipment_type} ${eq.size || ""} in maintenance`,
+              description: "Equipment currently under maintenance - not available for trips",
+              priority: "medium",
+              relatedId: eq.id,
+            });
+          }
+
+          // Upcoming/overdue service
+          if (eq.next_service_date) {
+            const serviceDate = new Date(eq.next_service_date);
+            const daysUntil = differenceInDays(serviceDate, today);
+            
+            if (daysUntil < 0) {
+              newAlerts.push({
+                id: `eq-overdue-${eq.id}`,
+                type: "maintenance",
+                title: `${eq.equipment_type} ${eq.size || ""} - OVERDUE service`,
+                description: `Service was due ${Math.abs(daysUntil)} days ago`,
+                priority: "high",
+                relatedId: eq.id,
+                dueDate: eq.next_service_date,
+              });
+            } else if (daysUntil <= 7) {
+              newAlerts.push({
+                id: `eq-upcoming-${eq.id}`,
+                type: "maintenance",
+                title: `${eq.equipment_type} ${eq.size || ""} - service due soon`,
+                description: `Scheduled service in ${daysUntil} days`,
+                priority: daysUntil <= 3 ? "high" : "medium",
+                relatedId: eq.id,
+                dueDate: eq.next_service_date,
+              });
+            }
+          }
+        });
+
+        // Count available equipment by type and size
+        const availableEquipment = equipment.filter(e => e.status === "available");
+        const equipmentCounts: Record<string, number> = {};
+        availableEquipment.forEach(e => {
+          const key = `${e.equipment_type}-${e.size || "any"}`;
+          equipmentCounts[key] = (equipmentCounts[key] || 0) + 1;
+        });
+
+        // 2. Check upcoming bookings for equipment shortages
+        const targetDate = selectedDate || new Date();
+        const { data: bookings } = await supabase
+          .from("dive_bookings")
+          .select("id, group_name, dive_date, participants_count")
+          .eq("dive_center_id", diveCenterId)
+          .gte("dive_date", format(targetDate, "yyyy-MM-dd"))
+          .lte("dive_date", format(addDays(targetDate, 7), "yyyy-MM-dd"));
+
+        if (bookings) {
+          for (const booking of bookings) {
+            // Check equipment assignments
+            const { data: assignments } = await supabase
+              .from("event_inventory_assignments")
+              .select("equipment_id, tank_id")
+              .eq("event_id", booking.id);
+
+            // Get participant equipment requests
+            const { data: participants } = await supabase
+              .from("dive_trip_participants")
+              .select("id")
+              .eq("event_id", booking.id);
+
+            const { data: equipmentRequests } = await supabase
+              .from("equipment_rental_requests")
+              .select("*")
+              .in("participant_id", participants?.map(p => p.id) || []);
+
+            const assignedEquipmentCount = assignments?.filter(a => a.equipment_id).length || 0;
+            const assignedTankCount = assignments?.filter(a => a.tank_id).length || 0;
+
+            // Calculate needed equipment from participant requests
+            let neededBCD = 0, neededFins = 0, neededMask = 0, neededWetsuit = 0, neededRegulator = 0;
+            
+            equipmentRequests?.forEach(req => {
+              if (req.bcd_needed) neededBCD++;
+              if (req.fins_needed) neededFins++;
+              if (req.mask_needed) neededMask++;
+              if (req.wetsuit_needed) neededWetsuit++;
+              if (req.regulator_needed) neededRegulator++;
+            });
+
+            const totalNeeded = neededBCD + neededFins + neededMask + neededWetsuit + neededRegulator;
+
+            if (totalNeeded > 0 && assignedEquipmentCount < totalNeeded) {
+              const shortage = totalNeeded - assignedEquipmentCount;
+              newAlerts.push({
+                id: `shortage-${booking.id}`,
+                type: "shortage",
+                title: `Equipment shortage: ${booking.group_name || "Dive trip"}`,
+                description: `${shortage} equipment items still need assignment (${assignedEquipmentCount}/${totalNeeded} assigned)`,
+                priority: "high",
+                relatedId: booking.id,
+                dueDate: booking.dive_date,
+              });
+            }
+
+            // Check if booking needs tanks but none assigned
+            if (booking.participants_count > 0 && assignedTankCount === 0) {
+              newAlerts.push({
+                id: `tanks-${booking.id}`,
+                type: "unassigned",
+                title: `No tanks assigned: ${booking.group_name || "Dive trip"}`,
+                description: `${booking.participants_count} divers need tanks for ${format(new Date(booking.dive_date), "MMM d")}`,
+                priority: "high",
+                relatedId: booking.id,
+                dueDate: booking.dive_date,
+              });
+            }
+          }
+        }
+      }
+
+      // 3. Tanks needing service (hydrostatic or visual test)
+      const { data: tanks } = await supabase
+        .from("dive_tanks")
+        .select("id, tank_number, status, hydrostatic_test_date, visual_test_date")
+        .eq("dive_center_id", diveCenterId);
+
+      if (tanks) {
+        const today = new Date();
+
+        tanks.forEach(tank => {
+          // Check hydrostatic test (typically every 5 years)
+          if (tank.hydrostatic_test_date) {
+            const hydroDate = new Date(tank.hydrostatic_test_date);
+            const daysSince = differenceInDays(today, hydroDate);
+            const fiveYears = 365 * 5;
+            
+            if (daysSince > fiveYears) {
+              newAlerts.push({
+                id: `tank-hydro-${tank.id}`,
+                type: "tank_service",
+                title: `Tank ${tank.tank_number} - Hydrostatic test OVERDUE`,
+                description: `Last tested ${Math.floor(daysSince / 365)} years ago`,
+                priority: "high",
+                relatedId: tank.id,
+              });
+            } else if (daysSince > fiveYears - 90) {
+              newAlerts.push({
+                id: `tank-hydro-soon-${tank.id}`,
+                type: "tank_service",
+                title: `Tank ${tank.tank_number} - Hydrostatic test due soon`,
+                description: `Due within ${Math.floor((fiveYears - daysSince) / 30)} months`,
+                priority: "medium",
+                relatedId: tank.id,
+              });
+            }
+          }
+
+          // Check visual test (typically annual)
+          if (tank.visual_test_date) {
+            const visualDate = new Date(tank.visual_test_date);
+            const daysSince = differenceInDays(today, visualDate);
+            
+            if (daysSince > 365) {
+              newAlerts.push({
+                id: `tank-visual-${tank.id}`,
+                type: "tank_service",
+                title: `Tank ${tank.tank_number} - Visual inspection OVERDUE`,
+                description: `Last inspected ${Math.floor(daysSince / 30)} months ago`,
+                priority: "high",
+                relatedId: tank.id,
+              });
+            } else if (daysSince > 300) {
+              newAlerts.push({
+                id: `tank-visual-soon-${tank.id}`,
+                type: "tank_service",
+                title: `Tank ${tank.tank_number} - Visual inspection due soon`,
+                description: `Due within ${Math.floor((365 - daysSince) / 7)} weeks`,
+                priority: "medium",
+                relatedId: tank.id,
+              });
+            }
+          }
+        });
+
+        // Count available tanks
+        const availableTanks = tanks.filter(t => t.status === "full" || t.status === "empty").length;
+        const { data: upcomingBookings } = await supabase
+          .from("dive_bookings")
+          .select("participants_count")
+          .eq("dive_center_id", diveCenterId)
+          .gte("dive_date", format(new Date(), "yyyy-MM-dd"))
+          .lte("dive_date", format(addDays(new Date(), 3), "yyyy-MM-dd"));
+
+        const totalDiversSoon = upcomingBookings?.reduce((sum, b) => sum + b.participants_count, 0) || 0;
+        
+        if (totalDiversSoon > availableTanks) {
+          newAlerts.push({
+            id: "tank-shortage-overall",
+            type: "shortage",
+            title: "Tank shortage warning",
+            description: `${totalDiversSoon} divers expected in next 3 days but only ${availableTanks} tanks available`,
+            priority: "high",
+          });
+        }
+      }
+
+      setAlerts(newAlerts);
+    } catch (error) {
+      console.error("Error fetching alerts:", error);
+    }
+  }, [diveCenterId, selectedDate]);
 
   // Auto-generate tasks from bookings
   const autoGenerateTasks = useCallback(async () => {
@@ -73,24 +320,29 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
         .gte("dive_date", startDate)
         .lte("dive_date", endDate);
 
-      if (!bookings || bookings.length === 0) {
-        lastGeneratedRef.current = cacheKey;
-        return;
-      }
+      // Get maintenance logs for scheduled maintenance
+      const { data: maintenanceLogs } = await supabase
+        .from("maintenance_logs")
+        .select("id, maintenance_type, description, next_due_date, equipment_id, tank_id, boat_id")
+        .eq("dive_center_id", diveCenterId)
+        .not("next_due_date", "is", null)
+        .gte("next_due_date", format(targetDate, "yyyy-MM-dd"))
+        .lte("next_due_date", format(addDays(targetDate, 14), "yyyy-MM-dd"));
 
       // Get existing tasks to avoid duplicates
       const { data: existingTasks } = await supabase
         .from("booking_tasks")
-        .select("booking_id, task_type")
+        .select("booking_id, task_type, event_id")
         .eq("dive_center_id", diveCenterId);
 
       const existingTaskMap = new Set(
-        existingTasks?.map(t => `${t.booking_id}-${t.task_type}`) || []
+        existingTasks?.map(t => `${t.booking_id || t.event_id}-${t.task_type}`) || []
       );
 
       const newTasks: any[] = [];
 
-      for (const booking of bookings) {
+      // Generate booking tasks
+      for (const booking of bookings || []) {
         const diveDate = new Date(booking.dive_date);
         const prepDate = format(addDays(diveDate, -1), "yyyy-MM-dd");
         const dayOfDate = format(diveDate, "yyyy-MM-dd");
@@ -120,6 +372,21 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
         }
       }
 
+      // Generate maintenance tasks from scheduled maintenance
+      for (const maint of maintenanceLogs || []) {
+        const taskKey = `maint-${maint.id}-maintenance`;
+        if (!existingTaskMap.has(taskKey)) {
+          newTasks.push({
+            dive_center_id: diveCenterId,
+            task_type: "maintenance",
+            title: `Maintenance: ${maint.maintenance_type}`,
+            description: maint.description,
+            due_date: format(new Date(maint.next_due_date!), "yyyy-MM-dd"),
+            priority: 3,
+          });
+        }
+      }
+
       if (newTasks.length > 0) {
         await supabase.from("booking_tasks").insert(newTasks);
       }
@@ -136,6 +403,8 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
     try {
       // First auto-generate any missing tasks
       await autoGenerateTasks();
+      // Fetch alerts from inventory
+      await fetchAlerts();
 
       const targetDate = selectedDate || new Date();
       const startDate = format(startOfDay(targetDate), "yyyy-MM-dd");
@@ -163,36 +432,35 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
     } finally {
       setLoading(false);
     }
-  }, [diveCenterId, selectedDate, operatorMode, autoGenerateTasks]);
+  }, [diveCenterId, selectedDate, operatorMode, autoGenerateTasks, fetchAlerts]);
 
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
-  // Subscribe to booking changes to auto-refresh tasks
+  // Subscribe to changes
   useEffect(() => {
     const channel = supabase
-      .channel('booking-tasks-sync')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'dive_bookings',
-          filter: `dive_center_id=eq.${diveCenterId}`
-        },
-        () => {
-          // Reset cache and refetch when bookings change
-          lastGeneratedRef.current = "";
-          fetchTasks();
-        }
-      )
+      .channel('todo-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dive_bookings', filter: `dive_center_id=eq.${diveCenterId}` }, () => {
+        lastGeneratedRef.current = "";
+        fetchTasks();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dive_equipment', filter: `dive_center_id=eq.${diveCenterId}` }, () => {
+        fetchAlerts();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dive_tanks', filter: `dive_center_id=eq.${diveCenterId}` }, () => {
+        fetchAlerts();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_inventory_assignments' }, () => {
+        fetchAlerts();
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [diveCenterId, fetchTasks]);
+  }, [diveCenterId, fetchTasks, fetchAlerts]);
 
   const toggleTask = async (taskId: string, completed: boolean) => {
     try {
@@ -230,8 +498,9 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
     return format(date, "EEE, MMM d");
   };
 
-  const getPriorityBadge = (priority: number) => {
-    switch (priority) {
+  const getPriorityBadge = (priority: number | string) => {
+    const p = typeof priority === "string" ? (priority === "high" ? 3 : priority === "medium" ? 2 : 1) : priority;
+    switch (p) {
       case 3:
         return <Badge variant="destructive" className="text-xs">High</Badge>;
       case 2:
@@ -251,6 +520,7 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
   const completedCount = tasks.filter(t => t.completed).length;
   const pendingCount = tasks.filter(t => !t.completed).length;
   const overdueCount = tasks.filter(t => !t.completed && isBefore(new Date(t.due_date), startOfDay(new Date()))).length;
+  const highPriorityAlerts = alerts.filter(a => a.priority === "high").length;
 
   if (loading) {
     return (
@@ -273,91 +543,182 @@ export function TodoList({ diveCenterId, operatorMode = false, selectedDate, onR
             <ClipboardList className="h-5 w-5" />
             {operatorMode ? "Today's Operations" : "Task Checklist"}
           </CardTitle>
-        </div>
-        <div className="flex gap-4 text-sm text-muted-foreground mt-2">
-          <span className="flex items-center gap-1">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            {completedCount} done
-          </span>
-          <span className="flex items-center gap-1">
-            <Circle className="h-4 w-4 text-blue-500" />
-            {pendingCount} pending
-          </span>
-          {overdueCount > 0 && (
-            <span className="flex items-center gap-1 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              {overdueCount} overdue
-            </span>
+          {highPriorityAlerts > 0 && (
+            <Badge variant="destructive" className="animate-pulse">
+              {highPriorityAlerts} Alert{highPriorityAlerts > 1 ? "s" : ""}
+            </Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className={operatorMode ? "h-[calc(100vh-300px)]" : "h-[400px]"}>
-          {Object.keys(groupedTasks).length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No tasks scheduled</p>
-              <p className="text-sm">Tasks will appear automatically when bookings are created</p>
+      <CardContent className="pt-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="tasks" className="flex-1 gap-1">
+              <ClipboardList className="h-4 w-4" />
+              Tasks
+              {pendingCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">{pendingCount}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="flex-1 gap-1">
+              <AlertCircle className="h-4 w-4" />
+              Alerts
+              {alerts.length > 0 && (
+                <Badge variant={highPriorityAlerts > 0 ? "destructive" : "secondary"} className="ml-1 h-5 px-1.5">
+                  {alerts.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tasks" className="mt-0">
+            <div className="flex gap-4 text-sm text-muted-foreground mb-3">
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                {completedCount} done
+              </span>
+              <span className="flex items-center gap-1">
+                <Circle className="h-4 w-4 text-blue-500" />
+                {pendingCount} pending
+              </span>
+              {overdueCount > 0 && (
+                <span className="flex items-center gap-1 text-destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  {overdueCount} overdue
+                </span>
+              )}
             </div>
-          ) : (
-            <div className="space-y-6">
-              {Object.entries(groupedTasks).map(([date, dateTasks]) => (
-                <div key={date}>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-3 sticky top-0 bg-background py-1">
-                    {getDateLabel(date)}
-                  </h4>
-                  <div className="space-y-2">
-                    {dateTasks.map(task => {
-                      const taskTypeInfo = TASK_TYPES[task.task_type] || TASK_TYPES.custom;
-                      const TaskIcon = taskTypeInfo.icon;
-                      const taskColor = taskTypeInfo.color;
+
+            <ScrollArea className={operatorMode ? "h-[calc(100vh-350px)]" : "h-[350px]"}>
+              {Object.keys(groupedTasks).length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No tasks scheduled</p>
+                  <p className="text-sm">Tasks appear automatically from bookings</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(groupedTasks).map(([date, dateTasks]) => (
+                    <div key={date}>
+                      <h4 className="font-medium text-sm text-muted-foreground mb-3 sticky top-0 bg-background py-1">
+                        {getDateLabel(date)}
+                      </h4>
+                      <div className="space-y-2">
+                        {dateTasks.map(task => {
+                          const taskTypeInfo = TASK_TYPES[task.task_type] || TASK_TYPES.custom;
+                          const TaskIcon = taskTypeInfo.icon;
+                          const taskColor = taskTypeInfo.color;
+
+                          return (
+                            <div
+                              key={task.id}
+                              className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
+                                task.completed
+                                  ? "bg-muted/50 opacity-60"
+                                  : isBefore(new Date(task.due_date), startOfDay(new Date()))
+                                  ? "border-destructive/50 bg-destructive/5"
+                                  : "hover:bg-accent/50"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={task.completed}
+                                onCheckedChange={(checked) => toggleTask(task.id, !!checked)}
+                                className="mt-1"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <div className={`p-1 rounded ${taskColor}`}>
+                                    <TaskIcon className="h-3 w-3 text-white" />
+                                  </div>
+                                  <span className={`font-medium text-sm ${task.completed ? "line-through" : ""}`}>
+                                    {task.title}
+                                  </span>
+                                  {getPriorityBadge(task.priority)}
+                                </div>
+                                {task.description && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {task.description}
+                                  </p>
+                                )}
+                                {task.booking && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    📍 {task.booking.location || "No location"} • {format(new Date(task.booking.dive_date), "h:mm a")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="alerts" className="mt-0">
+            <ScrollArea className={operatorMode ? "h-[calc(100vh-350px)]" : "h-[350px]"}>
+              {alerts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500 opacity-50" />
+                  <p>No alerts</p>
+                  <p className="text-sm">All equipment and inventory looks good!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {alerts
+                    .sort((a, b) => {
+                      const priorityOrder = { high: 0, medium: 1, low: 2 };
+                      return priorityOrder[a.priority] - priorityOrder[b.priority];
+                    })
+                    .map(alert => {
+                      const alertIcons = {
+                        maintenance: Wrench,
+                        unassigned: Package,
+                        shortage: AlertCircle,
+                        tank_service: Gauge,
+                      };
+                      const AlertIcon = alertIcons[alert.type];
+                      const alertColors = {
+                        high: "border-destructive/50 bg-destructive/5",
+                        medium: "border-yellow-500/50 bg-yellow-500/5",
+                        low: "border-muted",
+                      };
 
                       return (
                         <div
-                          key={task.id}
-                          className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-                            task.completed
-                              ? "bg-muted/50 opacity-60"
-                              : isBefore(new Date(task.due_date), startOfDay(new Date()))
-                              ? "border-destructive/50 bg-destructive/5"
-                              : "hover:bg-accent/50"
-                          }`}
+                          key={alert.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border ${alertColors[alert.priority]}`}
                         >
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={(checked) => toggleTask(task.id, !!checked)}
-                            className="mt-1"
-                          />
+                          <div className={`p-1.5 rounded ${
+                            alert.priority === "high" ? "bg-destructive" : 
+                            alert.priority === "medium" ? "bg-yellow-500" : "bg-muted"
+                          }`}>
+                            <AlertIcon className="h-4 w-4 text-white" />
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className={`p-1 rounded ${taskColor}`}>
-                                <TaskIcon className="h-3 w-3 text-white" />
-                              </div>
-                              <span className={`font-medium text-sm ${task.completed ? "line-through" : ""}`}>
-                                {task.title}
-                              </span>
-                              {getPriorityBadge(task.priority)}
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium text-sm">{alert.title}</span>
+                              {getPriorityBadge(alert.priority)}
                             </div>
-                            {task.description && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                {task.description}
-                              </p>
-                            )}
-                            {task.booking && (
+                            <p className="text-xs text-muted-foreground">
+                              {alert.description}
+                            </p>
+                            {alert.dueDate && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                📍 {task.booking.location || "No location"} • {format(new Date(task.booking.dive_date), "h:mm a")}
+                                📅 {getDateLabel(alert.dueDate)}
                               </p>
                             )}
                           </div>
                         </div>
                       );
                     })}
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+              )}
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
