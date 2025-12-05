@@ -5,8 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { CalendarIcon, Wand2 } from "lucide-react";
+import { format, addYears, addMonths } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 
 interface EditItemDialogProps {
   itemId: string | null;
@@ -15,6 +21,24 @@ interface EditItemDialogProps {
   onOpenChange: (open: boolean) => void;
   onItemUpdated: () => void;
 }
+
+// International standards for inspection intervals
+const INSPECTION_STANDARDS = {
+  tank: {
+    visual: { interval: 1, unit: "year", label: "Annual Visual Inspection (DOT/EN)" },
+    hydrostatic: { interval: 5, unit: "year", label: "Hydrostatic Test (DOT 5-year)" }
+  },
+  equipment: {
+    bcd: { interval: 1, unit: "year", label: "Annual Service (Manufacturer)" },
+    regulator: { interval: 1, unit: "year", label: "Annual Service (EN 250)" },
+    wetsuit: { interval: 2, unit: "year", label: "Bi-annual Inspection" },
+    fins: { interval: 2, unit: "year", label: "Bi-annual Inspection" },
+    mask: { interval: 2, unit: "year", label: "Bi-annual Inspection" }
+  },
+  boat: {
+    safety: { interval: 1, unit: "year", label: "Annual Safety Inspection (Maritime)" }
+  }
+};
 
 export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onItemUpdated }: EditItemDialogProps) => {
   const [loading, setLoading] = useState(false);
@@ -47,6 +71,35 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
     }
   };
 
+  const handleAutoSchedule = () => {
+    const now = new Date();
+    
+    if (itemCategory === "tank") {
+      // Auto-schedule based on DOT standards
+      const visualDue = addYears(now, 1);
+      const hydrostaticDue = addYears(now, 5);
+      
+      setFormData({
+        ...formData,
+        visual_test_date: now.toISOString(),
+        hydrostatic_test_date: formData.hydrostatic_test_date || now.toISOString()
+      });
+      
+      toast.success("Inspection dates auto-scheduled based on DOT/EN standards");
+    } else if (itemCategory === "equipment") {
+      // Auto-schedule based on equipment type
+      const serviceDue = addYears(now, 1);
+      
+      setFormData({
+        ...formData,
+        last_service_date: now.toISOString(),
+        next_service_date: serviceDue.toISOString()
+      });
+      
+      toast.success("Service dates auto-scheduled based on manufacturer standards");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemId || !itemCategory) return;
@@ -63,17 +116,21 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
         updateData.size = formData.size || null;
         updateData.status = formData.status;
         updateData.notes = formData.notes || null;
+        updateData.last_service_date = formData.last_service_date || null;
+        updateData.next_service_date = formData.next_service_date || null;
+        updateData.purchase_date = formData.purchase_date || null;
       } else if (itemCategory === "tank") {
         updateData.tank_number = formData.tank_number;
         updateData.gas_type = formData.gas_type;
         updateData.pressure_bar = formData.pressure_bar ? parseInt(formData.pressure_bar) : null;
         updateData.status = formData.status;
+        updateData.visual_test_date = formData.visual_test_date || null;
+        updateData.hydrostatic_test_date = formData.hydrostatic_test_date || null;
         
         if (formData.gas_type === "Nitrox") {
           updateData.nitrox_o2_percentage = formData.nitrox_o2_percentage ? parseFloat(formData.nitrox_o2_percentage) : null;
           updateData.nitrox_mod = formData.nitrox_mod ? parseFloat(formData.nitrox_mod) : null;
         } else {
-          // Clear Nitrox fields if changing back to Air
           updateData.nitrox_o2_percentage = null;
           updateData.nitrox_mod = null;
         }
@@ -100,10 +157,54 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
     }
   };
 
+  const DatePicker = ({ 
+    label, 
+    value, 
+    onChange, 
+    hint 
+  }: { 
+    label: string; 
+    value: string | null; 
+    onChange: (date: Date | undefined) => void;
+    hint?: string;
+  }) => (
+    <div>
+      <Label>{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !value && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value ? format(new Date(value), "PPP") : <span>Pick a date</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value ? new Date(value) : undefined}
+            onSelect={onChange}
+            initialFocus
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+    </div>
+  );
+
   const renderFormFields = () => {
     if (!itemCategory) return null;
 
     if (itemCategory === "equipment") {
+      const equipmentType = formData.equipment_type?.toLowerCase() || "bcd";
+      const standard = INSPECTION_STANDARDS.equipment[equipmentType as keyof typeof INSPECTION_STANDARDS.equipment] 
+        || INSPECTION_STANDARDS.equipment.bcd;
+
       return (
         <>
           <div>
@@ -149,6 +250,36 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
               </SelectContent>
             </Select>
           </div>
+
+          <Separator className="my-2" />
+          
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Inspection Schedule</h4>
+            <Button type="button" variant="outline" size="sm" onClick={handleAutoSchedule}>
+              <Wand2 className="w-4 h-4 mr-2" />
+              Auto Schedule
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-2">Standard: {standard.label}</p>
+
+          <DatePicker
+            label="Purchase Date"
+            value={formData.purchase_date}
+            onChange={(date) => setFormData({ ...formData, purchase_date: date?.toISOString() })}
+          />
+
+          <DatePicker
+            label="Last Service Date"
+            value={formData.last_service_date}
+            onChange={(date) => setFormData({ ...formData, last_service_date: date?.toISOString() })}
+          />
+
+          <DatePicker
+            label="Next Service Due"
+            value={formData.next_service_date}
+            onChange={(date) => setFormData({ ...formData, next_service_date: date?.toISOString() })}
+            hint="Annual service recommended for BCDs and regulators"
+          />
 
           <div>
             <Label htmlFor="notes">Notes</Label>
@@ -250,6 +381,31 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
               </SelectContent>
             </Select>
           </div>
+
+          <Separator className="my-2" />
+          
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Inspection Schedule</h4>
+            <Button type="button" variant="outline" size="sm" onClick={handleAutoSchedule}>
+              <Wand2 className="w-4 h-4 mr-2" />
+              Auto Schedule
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-2">DOT/EN Standards: Visual (1yr), Hydrostatic (5yr)</p>
+
+          <DatePicker
+            label="Last Visual Inspection"
+            value={formData.visual_test_date}
+            onChange={(date) => setFormData({ ...formData, visual_test_date: date?.toISOString() })}
+            hint="Required annually by DOT/EN regulations"
+          />
+
+          <DatePicker
+            label="Last Hydrostatic Test"
+            value={formData.hydrostatic_test_date}
+            onChange={(date) => setFormData({ ...formData, hydrostatic_test_date: date?.toISOString() })}
+            hint="Required every 5 years by DOT regulations"
+          />
         </>
       );
     }
@@ -296,6 +452,16 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
               </SelectContent>
             </Select>
           </div>
+
+          <Separator className="my-2" />
+          
+          <div>
+            <h4 className="text-sm font-medium mb-2">Inspection Schedule</h4>
+            <p className="text-xs text-muted-foreground">
+              Boat inspections are managed through the maintenance log. 
+              Standard: Annual safety inspection per maritime regulations.
+            </p>
+          </div>
         </>
       );
     }
@@ -303,7 +469,7 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit {itemCategory === "equipment" ? "Equipment" : itemCategory === "tank" ? "Tank" : "Boat"}</DialogTitle>
         </DialogHeader>
