@@ -55,10 +55,16 @@ export const InventoryAssignment = ({
   tanksPerPerson = 2,
   onAssignmentChange,
 }: InventoryAssignmentProps) => {
-  // Helper to check if an item is available based on inventory type
+  // Statuses that make items unavailable for assignment
+  const UNAVAILABLE_STATUSES = ["maintenance", "needs_inspection", "disposed", "needs_checking", "in-use", "rented"];
+  
+  // Helper to check if an item is available based on inventory type and status
   const isItemAvailable = (status: string) => {
+    // First check if status is in unavailable list
+    if (UNAVAILABLE_STATUSES.includes(status)) return false;
+    
     if (inventoryType === "tank") {
-      // Tanks use "full", "empty" as available states (not "in_use", "maintenance", "disposed")
+      // Tanks use "full", "empty" as available states
       return status === "full" || status === "empty";
     }
     // Boats and equipment use "available"
@@ -201,13 +207,19 @@ export const InventoryAssignment = ({
         
         // Mark as unavailable only if assigned to another event on the SAME day
         const isAssignedElsewhere = assignedItemIds.includes(item.id);
-        // Also consider item's own status (maintenance, disposed, etc.)
+        // Also consider item's own status (maintenance, disposed, needs_inspection, etc.)
         const baseStatus = item.status || "available";
+        
+        // Check if base status is unavailable
+        const isUnavailableStatus = UNAVAILABLE_STATUSES.includes(baseStatus);
         
         // Normalize status for display and filtering
         let effectiveStatus: string;
         if (isAssignedElsewhere) {
           effectiveStatus = "assigned_elsewhere";
+        } else if (isUnavailableStatus) {
+          // Keep unavailable statuses as-is (maintenance, needs_inspection, disposed, etc.)
+          effectiveStatus = baseStatus;
         } else if (inventoryType === "tank") {
           // Normalize tank status: full/empty = available for assignment
           effectiveStatus = (baseStatus === "full" || baseStatus === "empty") ? "available" : baseStatus;

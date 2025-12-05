@@ -246,9 +246,12 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
               <SelectContent>
                 <SelectItem value="available">Available</SelectItem>
                 <SelectItem value="rented">Rented</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
+                <SelectItem value="maintenance">In Maintenance</SelectItem>
+                <SelectItem value="needs_inspection">Needs Inspection</SelectItem>
+                <SelectItem value="disposed">Disposed/Retired</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1">Items in maintenance or needing inspection won't be available for assignment</p>
           </div>
 
           <Separator className="my-2" />
@@ -375,11 +378,15 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="empty">Empty</SelectItem>
-                <SelectItem value="full">Full</SelectItem>
+                <SelectItem value="empty">Empty (Available)</SelectItem>
+                <SelectItem value="full">Full (Available)</SelectItem>
                 <SelectItem value="needs_checking">Needs Checking</SelectItem>
+                <SelectItem value="maintenance">In Maintenance</SelectItem>
+                <SelectItem value="needs_inspection">Needs Inspection</SelectItem>
+                <SelectItem value="disposed">Disposed/Retired</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1">Only "Empty" and "Full" tanks are available for assignment</p>
           </div>
 
           <Separator className="my-2" />
@@ -448,9 +455,12 @@ export const EditItemDialog = ({ itemId, itemCategory, open, onOpenChange, onIte
               <SelectContent>
                 <SelectItem value="available">Available</SelectItem>
                 <SelectItem value="in-use">In Use</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
+                <SelectItem value="maintenance">In Maintenance</SelectItem>
+                <SelectItem value="needs_inspection">Needs Inspection</SelectItem>
+                <SelectItem value="disposed">Disposed/Retired</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1">Only "Available" boats can be assigned to trips</p>
           </div>
 
           <Separator className="my-2" />

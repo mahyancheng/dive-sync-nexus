@@ -85,8 +85,21 @@ const ERPEquipment = () => {
   const inventoryItems: InventoryItem[] = useMemo(() => {
     const items: InventoryItem[] = [];
 
+    // Helper to determine condition based on inspection dates
+    const getInspectionCondition = (nextDate: string | null): "excellent" | "good" | "fair" | "poor" => {
+      if (!nextDate) return "fair";
+      const daysUntil = differenceInDays(new Date(nextDate), new Date());
+      if (daysUntil < 0) return "poor"; // Overdue
+      if (daysUntil <= 30) return "fair"; // Due soon
+      if (daysUntil <= 90) return "good";
+      return "excellent";
+    };
+
     // Add equipment
     equipment.forEach(item => {
+      const condition = item.status === "maintenance" || item.status === "needs_inspection" 
+        ? "poor" 
+        : getInspectionCondition(item.next_service_date);
       items.push({
         id: `equipment-${item.id}`,
         name: item.equipment_type,
@@ -95,14 +108,38 @@ const ERPEquipment = () => {
         asset_code: `EQ-${item.id.substring(0, 6)}`,
         category: "equipment",
         status: item.status || "available",
-        condition: "good", // Default since not in schema
-        current_value: 500, // Estimate
+        condition,
+        current_value: 500,
         next_maintenance: item.next_service_date
       });
     });
 
-    // Add tanks
+    // Add tanks - determine next maintenance from visual or hydro test
     tanks.forEach(tank => {
+      // Calculate next due dates
+      let nextMaintenance: string | null = null;
+      if (tank.visual_test_date) {
+        const visualDue = new Date(tank.visual_test_date);
+        visualDue.setFullYear(visualDue.getFullYear() + 1);
+        nextMaintenance = visualDue.toISOString();
+      }
+      if (tank.hydrostatic_test_date) {
+        const hydroDue = new Date(tank.hydrostatic_test_date);
+        hydroDue.setFullYear(hydroDue.getFullYear() + 5);
+        if (!nextMaintenance || new Date(hydroDue) < new Date(nextMaintenance)) {
+          nextMaintenance = hydroDue.toISOString();
+        }
+      }
+      
+      const condition = tank.status === "maintenance" || tank.status === "needs_inspection" || tank.status === "needs_checking"
+        ? "poor" 
+        : getInspectionCondition(nextMaintenance);
+      
+      // Tank statuses: full/empty are available for scheduling, others are not
+      const displayStatus = tank.status === "full" || tank.status === "empty" 
+        ? "available" 
+        : tank.status;
+      
       items.push({
         id: `tank-${tank.id}`,
         name: `Tank ${tank.tank_number}`,
@@ -110,15 +147,18 @@ const ERPEquipment = () => {
         size: `${tank.pressure_bar || 0}bar`,
         asset_code: `TANK-${tank.tank_number}`,
         category: "tank",
-        status: tank.status === "full" ? "available" : tank.status === "empty" ? "maintenance" : tank.status,
-        condition: tank.pressure_bar > 150 ? "excellent" : tank.pressure_bar > 100 ? "good" : "fair",
+        status: displayStatus,
+        condition,
         current_value: 800,
-        next_maintenance: tank.hydrostatic_test_date
+        next_maintenance: nextMaintenance
       });
     });
 
     // Add boats
     boats.forEach(boat => {
+      const condition = boat.status === "maintenance" || boat.status === "needs_inspection" 
+        ? "poor" 
+        : "good";
       items.push({
         id: `boat-${boat.id}`,
         name: boat.name,
@@ -127,7 +167,7 @@ const ERPEquipment = () => {
         asset_code: `BOAT-${boat.id.substring(0, 6)}`,
         category: "boat",
         status: boat.status || "available",
-        condition: "good",
+        condition,
         current_value: 50000,
         location: "Marina"
       });
