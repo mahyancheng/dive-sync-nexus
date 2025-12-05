@@ -195,11 +195,11 @@ export const ItemHistoryDialog = ({ itemId, itemCategory, open, onOpenChange }: 
     }
   };
 
-  // Build calendar events
+  // Build calendar events with trip details
   const calendarEvents = useMemo((): CalendarEvent[] => {
     const events: CalendarEvent[] = [];
 
-    // Add trip/assignment dates
+    // Add trip/assignment dates with full trip details
     assignments.forEach(assignment => {
       const date = assignment.booking?.dive_date 
         ? new Date(assignment.booking.dive_date)
@@ -207,10 +207,21 @@ export const ItemHistoryDialog = ({ itemId, itemCategory, open, onOpenChange }: 
           ? new Date(assignment.event.start_time)
           : new Date(assignment.assigned_date);
       
+      // Build descriptive label with trip name and location
+      let label = "Trip";
+      if (assignment.booking) {
+        const parts = [assignment.booking.group_name || "Booking"];
+        if (assignment.booking.location) parts.push(`@ ${assignment.booking.location}`);
+        if (assignment.booking.dive_type) parts.push(`(${assignment.booking.dive_type})`);
+        label = parts.join(" ");
+      } else if (assignment.event) {
+        label = assignment.event.title;
+      }
+      
       events.push({
         date,
         type: "trip",
-        label: assignment.booking?.group_name || assignment.event?.title || "Trip",
+        label,
         color: "bg-primary"
       });
     });
