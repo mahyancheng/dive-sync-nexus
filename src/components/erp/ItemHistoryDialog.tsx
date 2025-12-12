@@ -128,10 +128,10 @@ export const ItemHistoryDialog = ({ itemId, itemCategory, open, onOpenChange }: 
           .eq(assignmentColumn, realId)
           .order("assigned_date", { ascending: false });
 
-        // Also fetch event inventory assignments
+        // Fetch event inventory assignments - need to get event_id to query both sources
         const { data: eventAssignments } = await supabase
           .from("event_inventory_assignments")
-          .select("id, assigned_at, returned_at, notes, event:custom_events(title, start_time, end_time)")
+          .select("id, event_id, assigned_at, returned_at, notes")
           .eq(itemCategory === "equipment" ? "equipment_id" : "tank_id", realId)
           .order("assigned_at", { ascending: false });
 
@@ -149,15 +149,55 @@ export const ItemHistoryDialog = ({ itemId, itemCategory, open, onOpenChange }: 
           });
         }
         
-        if (eventAssignments) {
+        // For event_inventory_assignments, we need to check both custom_events and dive_bookings
+        if (eventAssignments && eventAssignments.length > 0) {
+          const eventIds = eventAssignments.map(a => a.event_id);
+          
+          // Fetch from custom_events
+          const { data: customEvents } = await supabase
+            .from("custom_events")
+            .select("id, title, start_time, end_time")
+            .in("id", eventIds);
+          
+          // Fetch from dive_bookings (event_id can reference bookings too)
+          const { data: bookingEvents } = await supabase
+            .from("dive_bookings")
+            .select("id, group_name, location, dive_type, dive_date")
+            .in("id", eventIds);
+          
+          const customEventMap = new Map(customEvents?.map(e => [e.id, e]) || []);
+          const bookingEventMap = new Map(bookingEvents?.map(b => [b.id, b]) || []);
+          
           eventAssignments.forEach(a => {
-            combinedAssignments.push({
-              id: a.id,
-              assigned_date: a.assigned_at,
-              returned_date: a.returned_at,
-              condition_notes: a.notes,
-              event: a.event as any
-            });
+            const customEvent = customEventMap.get(a.event_id);
+            const bookingEvent = bookingEventMap.get(a.event_id);
+            
+            if (bookingEvent) {
+              combinedAssignments.push({
+                id: a.id,
+                assigned_date: a.assigned_at,
+                returned_date: a.returned_at,
+                condition_notes: a.notes,
+                booking: {
+                  dive_date: bookingEvent.dive_date,
+                  dive_type: bookingEvent.dive_type,
+                  location: bookingEvent.location,
+                  group_name: bookingEvent.group_name
+                }
+              });
+            } else if (customEvent) {
+              combinedAssignments.push({
+                id: a.id,
+                assigned_date: a.assigned_at,
+                returned_date: a.returned_at,
+                condition_notes: a.notes,
+                event: {
+                  title: customEvent.title,
+                  start_time: customEvent.start_time,
+                  end_time: customEvent.end_time
+                }
+              });
+            }
           });
         }
 
@@ -168,24 +208,61 @@ export const ItemHistoryDialog = ({ itemId, itemCategory, open, onOpenChange }: 
         // Fetch boat assignments from event_inventory_assignments
         const { data: boatAssignments } = await supabase
           .from("event_inventory_assignments")
-          .select(`
-            id,
-            assigned_at,
-            returned_at,
-            notes,
-            event:custom_events(title, start_time, end_time)
-          `)
+          .select("id, event_id, assigned_at, returned_at, notes")
           .eq("boat_id", realId)
           .order("assigned_at", { ascending: false });
 
-        if (boatAssignments) {
-          setAssignments(boatAssignments.map(a => ({
-            id: a.id,
-            assigned_date: a.assigned_at,
-            returned_date: a.returned_at,
-            condition_notes: a.notes,
-            event: a.event as any
-          })));
+        if (boatAssignments && boatAssignments.length > 0) {
+          const eventIds = boatAssignments.map(a => a.event_id);
+          
+          const { data: customEvents } = await supabase
+            .from("custom_events")
+            .select("id, title, start_time, end_time")
+            .in("id", eventIds);
+          
+          const { data: bookingEvents } = await supabase
+            .from("dive_bookings")
+            .select("id, group_name, location, dive_type, dive_date")
+            .in("id", eventIds);
+          
+          const customEventMap = new Map(customEvents?.map(e => [e.id, e]) || []);
+          const bookingEventMap = new Map(bookingEvents?.map(b => [b.id, b]) || []);
+          
+          const assignments: Assignment[] = [];
+          boatAssignments.forEach(a => {
+            const customEvent = customEventMap.get(a.event_id);
+            const bookingEvent = bookingEventMap.get(a.event_id);
+            
+            if (bookingEvent) {
+              assignments.push({
+                id: a.id,
+                assigned_date: a.assigned_at,
+                returned_date: a.returned_at,
+                condition_notes: a.notes,
+                booking: {
+                  dive_date: bookingEvent.dive_date,
+                  dive_type: bookingEvent.dive_type,
+                  location: bookingEvent.location,
+                  group_name: bookingEvent.group_name
+                }
+              });
+            } else if (customEvent) {
+              assignments.push({
+                id: a.id,
+                assigned_date: a.assigned_at,
+                returned_date: a.returned_at,
+                condition_notes: a.notes,
+                event: {
+                  title: customEvent.title,
+                  start_time: customEvent.start_time,
+                  end_time: customEvent.end_time
+                }
+              });
+            }
+          });
+          setAssignments(assignments);
+        } else {
+          setAssignments([]);
         }
       }
     } catch (error) {
